@@ -1,12 +1,15 @@
 const db = require("../models");
-const User = db.User;
-const Setting = db.Setting;
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 require("dotenv").config();
 const StripeService = require("../services/stripe.service");
 const StripeSubscriptionService = require("../services/stripeSubscription.service.js");
+const { User } = require("../models/user.js");
+const { Setting } = require("../models/setting.js");
+
+db.User = User;
+db.Setting = Setting;
 
 class UserService {
   // static async createUser({
@@ -60,12 +63,72 @@ class UserService {
   //   return { id: user.id, name: user.name, email: user.email, role: user.role };
   // }
 
+  static async testDB() {
+    try {
+      // await db.sequelize.authenticate();
+
+      // const user = await db.User.create({
+      //   id: uuidv4(),
+      //   firstName: "mzeee",
+      //   lastName: "loook",
+      //   email: "samko@gmail.com",
+      //   password: "hashedPassword",
+      //   role: "User",
+      //   stripeId: "stripeCustomerdddd",
+      // });
+      console.log("Connection has been established successfully.");
+    } catch (error) {
+      console.error("Unable to connect to the database:", error);
+    }
+  }
+
+  static async freezeUser(userId) {
+    const user = await db.User.findByPk(userId);
+    if (!user) {
+      throw new Error("User not found.");
+    }
+
+     await db.User.update(
+      { status: "freezed" },
+      { where: { id: userId } }
+    );
+    return await db.User.findByPk(userId);
+  }
+
+  static async disconnectUser(userId) {
+    const user = await db.User.findByPk(userId);
+    if (!user) {
+      throw new Error("User not found.");
+    }
+
+     await db.User.update(
+      { status: "inactive" },
+      { where: { id: userId } }
+    );
+
+    return await db.User.findByPk(userId);
+  }
+
+  static async activateUser(userId) {
+    const user = await db.User.findByPk(userId);
+    if (!user) {
+      throw new Error("User not found.");
+    }
+
+     await db.User.update(
+      { status: "active" },
+      { where: { id: userId } }
+    );
+
+    return await db.User.findByPk(userId);
+  }
+
   static async createUser({
     firstName,
     lastName,
     email,
     password,
-    role = "user",
+    role = "User",
   }) {
     // Step 1: Create Stripe customer
     let stripeCustomer;
@@ -217,6 +280,53 @@ class UserService {
     await db.Setting.create(defaultSettings);
 
     return { id: user.id, email: user.email, role: user.role };
+  }
+
+  static async getUsers(page = 1, limit = 6) {
+    // Convert to numbers to avoid issues with string inputs
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    // Calculate offset (skip) value
+    const offset = (page - 1) * limit;
+
+    // Get total user count
+    const totalUsers = await User.count();
+
+    // Fetch users with pagination
+    const users = await User.findAll({
+      limit,
+      offset,
+      order: [["createdAt", "DESC"]], // Optional: Sort by newest first
+    });
+
+    // Check if there are more results to fetch
+    const hasMore = offset + users.length < totalUsers;
+
+    return {
+      totalUsers,
+      page,
+      limit,
+      hasMore,
+      users,
+    };
+  }
+
+  static async getUserByEmailOrId({ id, email } = {}) {
+    let whereCondition = {};
+
+    // Add conditions based on provided parameters
+    if (id) whereCondition.id = id;
+    if (email) whereCondition.email = email;
+
+    // Find user(s) based on conditions
+    const user = await User.findOne({ where: whereCondition });
+
+    if (!user) {
+      throw new Error("User not found")
+    }
+
+    return user;
   }
 
   static async getUser(whereClause) {

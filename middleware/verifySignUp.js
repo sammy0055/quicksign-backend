@@ -1,25 +1,31 @@
 /**
  * models import
  */
-const db = require("../models/index.js");
+const { User } = require("../models/user.js");
 /**
  * middleware function to check if entered email already exists in database
  */
-checkDuplicateEmail = (req, res, next) => {
-  db.User.findOne({
+checkDuplicateEmail = async (req, res, next) => {
+  User.findOne({
     where: {
       email: req.body.email,
     },
-  }).then((admin) => {
-    if (admin) {
-      return res.status(400).send({
-        success: false,
-        message: "Email is already in use",
-      });
-    }
+  })
+    .then((admin) => {
+      if (admin) {
+        return res.status(400).send({
+          success: false,
+          message: "Email is already in use",
+        });
+      }
 
-    next();
-  });
+      next();
+    })
+    .catch((err) => {
+      res
+        .status(500)
+        .json({ error: { message: err.message, code: "server-error" } });
+    });
 };
 /**
  * signUpVerify object exports functions in the router file

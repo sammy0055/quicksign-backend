@@ -15,27 +15,27 @@ module.exports = {
     /**
      * username of database  passed from env file
      */
-    username: process.env.USER_NAME,
+    username: "postgres",
     /**
      * password of database passed from env file
      */
-    password: process.env.PASSWORD,
+    password: "sammy0055",
     /**
      * name of database passed from env file
      */
-    database: process.env.DATA_BASE,
+    database: "qicksign",
     /**
      * host of database passed from env file
      */
-    host: process.env.HOST,
+    host: "localhost",
     /**
      * port of database passed from env file
      */
-    port: process.env.PORT,
+    port: 5432,
     /**
      * dialect of database passed from env file
      */
-    dialect: "mysql",
+    dialect: "postgres",
     /**
      * pool of database passed from env file
      */

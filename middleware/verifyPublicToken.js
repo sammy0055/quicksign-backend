@@ -10,8 +10,11 @@ verifyToken = (req, res, next) => {
       message: "UnAuthorized Access",
     });
   }
-  let result = bcrypt.compareSync(process.env.PUBLIC_ACCESS_TOKEN, token);
-
+  const hashedPassword = bcrypt.hashSync(token, 10);
+  let result = bcrypt.compareSync(
+    process.env.PUBLIC_ACCESS_TOKEN,
+    hashedPassword
+  );
   if (result) {
     next();
   } else {

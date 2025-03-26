@@ -50,7 +50,7 @@ const server = app.listen(13000, function () {
 
 const socket = require("socket.io")(server, {
   cors: {
-    origin: process.env.ANGULARURL,
+    origin: [process.env.ANGULARURL, true],
   },
 });
 
@@ -64,6 +64,7 @@ const SubscriptionRoutes = require("./routes/subscription.routes");
 const StripeRoutes = require("./routes/stripe.routes");
 const BillingRoutes = require("./routes/billing.routes");
 const NotificationRoutes = require("./routes/notification.routes");
+const UserService = require("./services/user.service");
 
 app.use("/users", UserRoutes);
 app.use("/task", TaskRoutes);
@@ -74,6 +75,11 @@ app.use("/subscription", SubscriptionRoutes);
 app.use("/stripe", StripeRoutes);
 app.use("/billing", BillingRoutes);
 app.use("/notification", NotificationRoutes);
+
+app.get("/test", async (req, res) => {
+  await UserService.testDB();
+  res.json({ data: "welcome on board mother fuckers 😁" });
+});
 
 // Schedule cleanup every day at midnight
 cron.schedule("0 0 * * *", async () => {
@@ -108,3 +114,18 @@ cron.schedule("0 0 * * *", async () => {
 module.exports.notification = function (type, data) {
   socket.emit(type, data);
 };
+
+//server port
+async function initializeDatabase() {
+  try {
+    await sequelize.authenticate();
+    console.log("Database connected successfully!");
+
+    await sequelize.sync({ alter: true }); // Sync all models with the database
+    console.log("All models were synchronized successfully.");
+  } catch (error) {
+    console.error("Database connection failed:", error);
+  }
+}
+
+initializeDatabase().then(() => server);
