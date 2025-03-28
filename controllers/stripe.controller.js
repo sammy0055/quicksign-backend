@@ -2,6 +2,50 @@ const stripeController = {};
 const StripeService = require("../services/stripe.service.js");
 const StripeSubscriptionService = require("../services/stripeSubscription.service.js");
 
+stripeController.createPlan = async (req, res) => {
+  try {
+    const stripePlan = await StripeService.createMonthlyPlan(req.body);
+    res.status(200).send({
+      code: 200,
+      message: "Stripe Plan Created Successfully",
+      data: stripePlan,
+    });
+  } catch (error) {
+    console.log("error", error);
+    return res.status(500).json({ error: { message: error.message } });
+  }
+};
+
+stripeController.editPlan = async (req, res) => {
+  try {
+    const stripePlan = await StripeService.editPlan(req.body);
+    res.status(200).json({
+      code: 200,
+      message: "Stripe Plan Edited Successfully",
+      data: stripePlan,
+    });
+  } catch (error) {
+    console.log("error", error);
+    return res.status(500).json({ error: { message: error.message } });
+  }
+};
+
+stripeController.archivePlan = async (req, res) => {
+  try {
+    const productId = req.query.productId;
+    if (!productId) throw new Error("Product Id is required");
+    const stripePlan = await StripeService.archivePlan(productId);
+    res.status(200).json({
+      code: 200,
+      message: "Stripe Plan Archived Successfully",
+      data: stripePlan,
+    });
+  } catch (error) {
+    console.log("error", error);
+    return res.status(500).json({ error: { message: error.message } });
+  }
+};
+
 stripeController.addCard = async (req, res) => {
   try {
     const stripeAddCard = await StripeService.addPaymentMethod(
@@ -41,7 +85,7 @@ stripeController.getPlans = async (req, res) => {
     res.status(200).send({
       code: 200,
       // message: "Stripe Plans Retreived Successfully",
-      data: stripePlans,
+      data: stripePlans.data,
     });
   } catch (error) {
     console.log("error", error);

@@ -29,26 +29,126 @@ class StripeService {
     });
   }
 
-  static async getPlans() {
-    let plans = await stripe.products.list({
-      limit: 6,
-    });
-    for (let plan of plans.data) {
-      const price = await stripe.prices.retrieve(plan.default_price);
+  static async createMonthlyPlan({
+    name,
+    amount = 0,
+    currency = "usd",
+    features = [],
+  }) {
+    try {
+      // Step 1: Create the Product
+      const product = await stripe.products.create({
+        name: name,
+        metadata: { features: JSON.stringify(features) }, // Store features as JSON string
+      });
 
-      plan["price"] = price.unit_amount_decimal / 100;
-      plan["currency"] = price.currency;
-      plan["interval"] = price.recurring.interval;
+      // Step 2: Create the Monthly Price (Recurring Plan)
+      const price = await stripe.prices.create({
+        unit_amount: amount * 100, // Convert to cents
+        currency: currency,
+        recurring: { interval: "month" },
+        product: product.id,
+      });
+
+      const updatedProduct = await stripe.products.update(product.id, {
+        default_price: price.id,
+      });
+      return updatedProduct;
+    } catch (error) {
+      console.error("Error creating plan:", error);
+      throw error;
+    }
+  }
+
+  static async editPlan({
+    productId,
+    name,
+    amount = null,
+    currency = "usd",
+    features,
+  }) {
+    try {
+      // Step 1: Update product details
+      const updatedProduct = await stripe.products.update(productId, {
+        name: name,
+        metadata: { features: JSON.stringify(features) },
+      });
+
+      const priceId = updatedProduct.default_price;
+
+      // Step 2: check if price exist
+      const prices = await stripe.prices.list({
+        product: productId,
+      });
+
+      // check if price exist in the product
+      const priceToEdit = prices.data?.find(({ id }) => id === priceId);
+      if (!priceToEdit) {
+        throw new Error("priceId does not exist");
+      }
+
+      const priceData = await stripe.prices.retrieve(priceId);
+      const isAmountChanged = parseInt(priceData.unit_amount_decimal) !== amount * 100;
+
+      if (isAmountChanged) {
+        // Create a new price
+        const price = await stripe.prices.create({
+          unit_amount: amount * 100, // Convert to cents
+          currency: currency,
+          recurring: { interval: "month" },
+          product: productId,
+        });
+
+        // Update product to use new default price
+        return await stripe.products.update(productId, {
+          default_price: price.id,
+        });
+      }
+
+      return updatedProduct;
+    } catch (error) {
+      console.error("Error editing plan:", error);
+      throw error;
+    }
+  }
+
+  static async archivePlan(productId) {
+    try {
+        const archivedProduct = await stripe.products.update(productId, {
+            active: false
+        });
+
+        return archivedProduct;
+    } catch (error) {
+        console.error('Error archiving product:', error);
+        throw error;
+    }
+}
+
+  static async getPlans() {
+    let plans = await stripe.products.list({ active: true });
+
+    for (let plan of plans.data) {
+      if (plan.default_price) {
+        const price = await stripe.prices.retrieve(plan.default_price);
+        plan["price"] = price.unit_amount_decimal / 100;
+        plan["currency"] = price.currency;
+        plan["interval"] = price.recurring.interval;
+      }
     }
     return plans;
   }
 
   static async getPlanDetail(planId) {
-    var plan = await stripe.products.retrieve(planId);
+    let plan = await stripe.products.retrieve(planId);
     const price = await stripe.prices.retrieve(plan.default_price);
     plan["price"] = price.unit_amount_decimal / 100;
     plan["currency"] = price.currency;
     plan["interval"] = price.recurring.interval;
+
+    if (plan.metadata.features) {
+      plan.metadata.features = JSON.parse(plan.metadata.features);
+    }
     return plan;
   }
 

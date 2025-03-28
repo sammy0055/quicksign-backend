@@ -15,41 +15,42 @@ let sequelize;
 
 sequelize = new Sequelize(config.database, config.username, config.password, {
   ...config,
-  logging: (msg) => {
-    if (msg.startsWith("Executing (default):")) {
-      let query = msg.replace("Executing (default):", "").trim();
+  logging: false, // Disable SQL logging
+  // logging: (msg) => {
+  //   if (msg.startsWith("Executing (default):")) {
+  //     let query = msg.replace("Executing (default):", "").trim();
 
-      // Function to colorize different parts of the query
-      function colorizeQuery(query) {
-        return query
-          .replace(
-            /\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|AND|OR|JOIN|ON|GROUP BY|ORDER BY|LIMIT|HAVING|VALUES|SET|INNER|LEFT|RIGHT|OUTER)\b/gi,
-            (match) => chalk.yellow(match) // SQL Keywords - Yellow
-          )
-          .replace(/(['`"])(.*?)\1/g, (match) => chalk.green(match)) // String values - Green
-          .replace(/\b\d+\b/g, (match) => chalk.cyan(match)) // Numbers - Cyan
-          .replace(/(=|<|>|\+|-|\*|\/)/g, (match) => chalk.magenta(match)) // Operators - Magenta
-          .replace(
-            /\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b/gi,
-            (match) => chalk.blue(match) // UUIDs - Blue
-          );
-      }
+  //     // Function to colorize different parts of the query
+  //     function colorizeQuery(query) {
+  //       return query
+  //         .replace(
+  //           /\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|AND|OR|JOIN|ON|GROUP BY|ORDER BY|LIMIT|HAVING|VALUES|SET|INNER|LEFT|RIGHT|OUTER)\b/gi,
+  //           (match) => chalk.yellow(match) // SQL Keywords - Yellow
+  //         )
+  //         .replace(/(['`"])(.*?)\1/g, (match) => chalk.green(match)) // String values - Green
+  //         .replace(/\b\d+\b/g, (match) => chalk.cyan(match)) // Numbers - Cyan
+  //         .replace(/(=|<|>|\+|-|\*|\/)/g, (match) => chalk.magenta(match)) // Operators - Magenta
+  //         .replace(
+  //           /\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b/gi,
+  //           (match) => chalk.blue(match) // UUIDs - Blue
+  //         );
+  //     }
 
-      if (query.startsWith("SELECT")) {
-        console.log(chalk.cyan("[SELECT]"), colorizeQuery(query));
-      } else if (query.startsWith("INSERT")) {
-        console.log(chalk.green("[INSERT]"), colorizeQuery(query));
-      } else if (query.startsWith("UPDATE")) {
-        console.log(chalk.yellow("[UPDATE]"), colorizeQuery(query));
-      } else if (query.startsWith("DELETE")) {
-        console.log(chalk.red("[DELETE]"), colorizeQuery(query));
-      } else {
-        console.log(chalk.gray(query));
-      }
-    } else {
-      console.log(chalk.magenta(msg));
-    }
-  },
+  //     if (query.startsWith("SELECT")) {
+  //       console.log(chalk.cyan("[SELECT]"), colorizeQuery(query));
+  //     } else if (query.startsWith("INSERT")) {
+  //       console.log(chalk.green("[INSERT]"), colorizeQuery(query));
+  //     } else if (query.startsWith("UPDATE")) {
+  //       console.log(chalk.yellow("[UPDATE]"), colorizeQuery(query));
+  //     } else if (query.startsWith("DELETE")) {
+  //       console.log(chalk.red("[DELETE]"), colorizeQuery(query));
+  //     } else {
+  //       console.log(chalk.gray(query));
+  //     }
+  //   } else {
+  //     console.log(chalk.magenta(msg));
+  //   }
+  // },
 });
 
 // fs.readdirSync(__dirname)
@@ -74,6 +75,6 @@ sequelize = new Sequelize(config.database, config.username, config.password, {
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
-db.DataTypes = DataTypes
+db.DataTypes = DataTypes;
 
 module.exports = db;

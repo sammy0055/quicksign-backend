@@ -73,7 +73,7 @@ module.exports = {
     /**
      * dialect of database passed from env file
      */
-    dialect: "mysql",
+    dialect: "postgres",
     /**
      * pool of database passed from env file
      */

@@ -96,7 +96,9 @@ class UserController {
 
     try {
       const data = await UserService.activateUser(userId);
-      return res.status(200).json({ message: "User activeted successfully.", data });
+      return res
+        .status(200)
+        .json({ message: "User activeted successfully.", data });
     } catch (error) {
       console.error("Freeze user error:", error);
       return res.status(400).json({ message: error.message });
@@ -306,12 +308,17 @@ class UserController {
             fullName: user.firstName + " " + user.lastName,
             stripeId: user.stripeId,
           },
-          process.env.SECRET
+          process.env.SECRET,
+          { expiresIn: "1h" }
         );
-
+        const decoded = jwt.decode(token);
         return res.status(200).json({
           message: "User logged in successfully.",
-          token,
+          data: {
+            user,
+            token,
+            expiresAt: decoded.exp,
+          },
         });
       }
 
