@@ -13,6 +13,7 @@ const app = express();
 
 const cron = require("node-cron");
 const fs = require("fs").promises;
+const serverless = require("serverless-http");
 
 // Middleware
 app.use(cors());
@@ -77,8 +78,13 @@ app.use("/billing", BillingRoutes);
 app.use("/notification", NotificationRoutes);
 
 app.get("/test", async (req, res) => {
-  await UserService.testDB();
+  // await UserService.testDB();
   res.json({ data: "welcome on board mother fuckers 😁" });
+});
+
+app.get("/", async (req, res) => {
+  // await UserService.testDB();
+  res.json({ data: "welcome on board mother fuckers root 😁" });
 });
 
 // Schedule cleanup every day at midnight
@@ -128,4 +134,5 @@ async function initializeDatabase() {
   }
 }
 
-initializeDatabase().then(() => server);
+// initializeDatabase().then(() => server);
+module.exports.handler = serverless(app);
