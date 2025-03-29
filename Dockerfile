@@ -1,29 +1,35 @@
-# First stage: Use a Node.js image with package managers
-FROM node:20 AS builder
+# Use the Lambda Node.js 18 base image
+FROM public.ecr.aws/lambda/nodejs:18
 
-WORKDIR /app
+# Set working directory to /var/task, where Lambda expects the code
+WORKDIR /var/task
 
-# Install Git (already included in this base image)
-RUN apt-get update && apt-get install -y git
+# Install build tools and libraries required for canvas
+RUN yum install -y \
+    gcc-c++ \
+    make \
+    git \
+    pkgconfig \
+    cairo-devel \
+    pango-devel \
+    libjpeg-devel \
+    giflib-devel \
+    librsvg2-devel 
 
-# Copy package.json and install dependencies
+# Install yarn globally
+RUN npm install -g yarn@1.22.19
+
+# Copy package.json and yarn.lock (if present) for dependency installation
 COPY package*.json ./
-RUN npm install
 
-# Copy the rest of the app
+# Install dependencies with yarn
+RUN yarn install --ignore-scripts
+
+# Explicitly install and build canvas from source
+RUN npm install canvas --build-from-source --verbose
+
+# Copy the rest of the application files
 COPY . .
-# COPY .env .env
 
-# Second stage: Use AWS Lambda base image
-FROM public.ecr.aws/lambda/nodejs:20
-
-WORKDIR /app
-
-# Copy the built node_modules and app files from the builder stage
-COPY --from=builder /app ${LAMBDA_TASK_ROOT}
-# COPY --from=builder /app/.env ${LAMBDA_TASK_ROOT}/.env
-
-# Ensure .env is readable (optional)
-# RUN chmod 600 ${LAMBDA_TASK_ROOT}/.env
-
-CMD [ "app.handler" ]
+# Set the Lambda handler
+CMD ["app.handler"]

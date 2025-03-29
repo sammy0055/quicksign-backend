@@ -78,7 +78,7 @@ app.use("/billing", BillingRoutes);
 app.use("/notification", NotificationRoutes);
 
 app.get("/test", async (req, res) => {
-  // await UserService.testDB();
+  await UserService.testDB();
   res.json({ data: "welcome on board mother fuckers 😁" });
 });
 
@@ -133,6 +133,6 @@ async function initializeDatabase() {
     console.error("Database connection failed:", error);
   }
 }
-
-// initializeDatabase().then(() => server);
-module.exports.handler = serverless(app);
+// server
+initializeDatabase().then(() => server);
+// module.exports.handler = serverless(app);
