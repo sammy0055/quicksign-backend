@@ -1,12 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const { Client } = require("../models");
 const ClientService = require("../services/client.service");
 const ClientController = require("../controllers/client.controller");
 const checkAuth = require("../middleware/verifyJwtToken");
 
 // Instantiate the service and controller
-const clientService = new ClientService(Client);
+const clientService = new ClientService();
 const clientController = new ClientController(clientService);
 
 // Middleware to handle async errors
