@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
       },
       signatureRoutine: {
-        type: DataTypes.ENUM("parallel ", "sequential"),
+        type: DataTypes.ENUM("parallel", "sequential"),
         defaultValue: "parallel",
       },
       active: {

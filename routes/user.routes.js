@@ -45,7 +45,7 @@ router.post("/login", UserController.loginUser);
 router.post(
   "/register",
   [checkDuplicateEmail.checkDuplicateEmail],
-  [authPublicToken.verifyToken],
+  // [authPublicToken.verifyToken], not required since we are creating a user
   UserController.registerUser
 );
 

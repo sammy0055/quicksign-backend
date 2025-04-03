@@ -5,11 +5,9 @@ const { v4: uuidv4 } = require("uuid");
 require("dotenv").config();
 const StripeService = require("../services/stripe.service");
 const StripeSubscriptionService = require("../services/stripeSubscription.service.js");
-const { User } = require("../models/user.js");
-const { Setting } = require("../models/setting.js");
 
-db.User = User;
-db.Setting = Setting;
+// db.User = User;
+// db.Setting = Setting;
 
 class UserService {
   // static async createUser({
@@ -291,10 +289,10 @@ class UserService {
     const offset = (page - 1) * limit;
 
     // Get total user count
-    const totalUsers = await User.count();
+    const totalUsers = await db.User.count();
 
     // Fetch users with pagination
-    const users = await User.findAll({
+    const users = await db.User.findAll({
       limit,
       offset,
       order: [["createdAt", "DESC"]], // Optional: Sort by newest first
@@ -320,7 +318,7 @@ class UserService {
     if (email) whereCondition.email = email;
 
     // Find user(s) based on conditions
-    const user = await User.findOne({ where: whereCondition });
+    const user = await db.User.findOne({ where: whereCondition });
 
     if (!user) {
       throw new Error("User not found")
@@ -334,7 +332,7 @@ class UserService {
   }
 
   static async getUserByEmail(email) {
-    return await User.findOne({ where: { email } });
+    return await db.User.findOne({ where: { email } });
   }
 
   static async deleteUser(id) {
@@ -346,7 +344,7 @@ class UserService {
   }
 
   static async findOne(whereClause) {
-    return await User.findOne(whereClause);
+    return await db.User.findOne(whereClause);
   }
 
   static async changeUserPassword({ id, currentPassword, newPassword }) {

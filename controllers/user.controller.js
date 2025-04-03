@@ -116,7 +116,7 @@ class UserController {
       lastName,
       email,
       password,
-      role = "User",
+      role = "Admin",
       googleIdToken,
     } = req.body;
 

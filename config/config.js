@@ -23,7 +23,7 @@ module.exports = {
     /**
      * name of database passed from env file
      */
-    database: "qicksign",
+    database: "quicksign",
     /**
      * host of database passed from env file
      */

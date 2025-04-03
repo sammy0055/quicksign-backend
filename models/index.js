@@ -2,79 +2,82 @@
 /**
  * index file used to access model from different parts of backend
  */
-const fs = require("fs");
-const path = require("path");
+// const fs = require("fs");
+// const path = require("path");
 const { Sequelize, DataTypes } = require("sequelize");
-const basename = path.basename(__filename);
+// const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || "development";
-const chalk = require("chalk");
+// const chalk = require("chalk");
 const config = require(__dirname + "/../config/config.js")[env];
-const db = {};
 
-let sequelize;
+const sequelize = new Sequelize(
+  config.database,
+  config.username,
+  config.password,
+  {
+    ...config,
+    logging: false, // Disable SQL logging
+  }
+);
 
-sequelize = new Sequelize(config.database, config.username, config.password, {
-  ...config,
-  logging: false, // Disable SQL logging
-  // logging: (msg) => {
-  //   if (msg.startsWith("Executing (default):")) {
-  //     let query = msg.replace("Executing (default):", "").trim();
+// initialize all models
+const User = require("./user")(sequelize, DataTypes);
+const Billing = require("./billing")(sequelize, DataTypes);
+const Client = require("./client")(sequelize, DataTypes);
+const Group = require("./group")(sequelize, DataTypes);
+const StripeSubscription = require("./stripeSubscription")(
+  sequelize,
+  DataTypes
+);
+const Subscription = require("./subscription")(sequelize, DataTypes);
+const Task = require("./task")(sequelize, DataTypes);
+const TaskClient = require("./taskClient")(sequelize, DataTypes);
+const TaskGroup = require("./taskGroup")(sequelize, DataTypes);
+const Submission = require("./submission")(sequelize, DataTypes);
+const Setting = require("./setting")(sequelize, DataTypes);
+const Notification = require("./notification")(sequelize, DataTypes);
+const GroupClient = require("./groupClient")(sequelize, DataTypes);
 
-  //     // Function to colorize different parts of the query
-  //     function colorizeQuery(query) {
-  //       return query
-  //         .replace(
-  //           /\b(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|AND|OR|JOIN|ON|GROUP BY|ORDER BY|LIMIT|HAVING|VALUES|SET|INNER|LEFT|RIGHT|OUTER)\b/gi,
-  //           (match) => chalk.yellow(match) // SQL Keywords - Yellow
-  //         )
-  //         .replace(/(['`"])(.*?)\1/g, (match) => chalk.green(match)) // String values - Green
-  //         .replace(/\b\d+\b/g, (match) => chalk.cyan(match)) // Numbers - Cyan
-  //         .replace(/(=|<|>|\+|-|\*|\/)/g, (match) => chalk.magenta(match)) // Operators - Magenta
-  //         .replace(
-  //           /\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b/gi,
-  //           (match) => chalk.blue(match) // UUIDs - Blue
-  //         );
-  //     }
-
-  //     if (query.startsWith("SELECT")) {
-  //       console.log(chalk.cyan("[SELECT]"), colorizeQuery(query));
-  //     } else if (query.startsWith("INSERT")) {
-  //       console.log(chalk.green("[INSERT]"), colorizeQuery(query));
-  //     } else if (query.startsWith("UPDATE")) {
-  //       console.log(chalk.yellow("[UPDATE]"), colorizeQuery(query));
-  //     } else if (query.startsWith("DELETE")) {
-  //       console.log(chalk.red("[DELETE]"), colorizeQuery(query));
-  //     } else {
-  //       console.log(chalk.gray(query));
-  //     }
-  //   } else {
-  //     console.log(chalk.magenta(msg));
-  //   }
-  // },
+User.associate({
+  Client,
+  Group,
+  Task,
+  Setting,
+  StripeSubscription,
+  Subscription,
+  Billing,
+  Notification,
 });
 
-// fs.readdirSync(__dirname)
-//   .filter((file) => {
-//     return (
-//       file.indexOf(".") !== 0 && file !== basename && file.slice(-3) === ".js"
-//     );
-//   })
-//   .forEach((file) => {
-//     const model = require(path.join(__dirname, file))(
-//       sequelize,
-//       DataTypes
-//     );
-//     db[model.name] = model;
-//   });
+Client.associate({ Task, Group, Submission, User });
+Group.associate({ User, Client, Task });
+Notification.associate({ User, Task });
+Billing.associate({ User });
+Setting.associate({ User });
+StripeSubscription.associate({ User });
+Submission.associate({ Task, Client });
+Subscription.associate({ User });
+Task.associate({ User, Client, Group, Notification, Submission });
+GroupClient.associate({});
+TaskGroup.associate({});
+TaskClient.associate({});
 
-// Object.keys(db).forEach((modelName) => {
-//   if (db[modelName].associate) {
-//     db[modelName].associate(db);
-//   }
-// });
-
-db.sequelize = sequelize;
-db.Sequelize = Sequelize;
-db.DataTypes = DataTypes;
+const db = {
+  sequelize,
+  Sequelize,
+  User,
+  Billing,
+  Client,
+  Group,
+  StripeSubscription,
+  Subscription,
+  Task,
+  TaskClient,
+  TaskGroup,
+  Submission,
+  Setting,
+  Notification,
+  GroupClient
+};
 
 module.exports = db;

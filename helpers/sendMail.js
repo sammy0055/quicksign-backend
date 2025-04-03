@@ -5,7 +5,7 @@ const sendMail = async (to, subject, htmlContent) => {
   try {
     const transporter = nodemailer.createTransport(smtp);
     const mailOptions = {
-      from: `"Your Company" <${process.env.MAIL_USER}>`,
+      from: `"QuickSign" <${process.env.MAIL_USER}>`,
       to,
       subject,
       html: htmlContent,

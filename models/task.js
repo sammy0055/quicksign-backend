@@ -51,7 +51,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       isDeleted: {
         type: DataTypes.BOOLEAN,
-        defaultValue: 0,
+        defaultValue: false,
         allowNull: false,
       },
     },
@@ -63,3 +63,4 @@ module.exports = (sequelize, DataTypes) => {
   );
   return Task;
 };
+

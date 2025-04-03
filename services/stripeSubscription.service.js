@@ -1,8 +1,7 @@
 /**
  * constant database (db) variable to access models
  */
-const db = require("../models/index.js");
-const { StripeSubscription } = require("../models/stripeSubscription.js");
+const {StripeSubscription} = require("../models/index.js");
 const StripeService = require("./stripe.service.js");
 /**
  * Class to create a company Billing service object

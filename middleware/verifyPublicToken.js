@@ -10,10 +10,10 @@ verifyToken = (req, res, next) => {
       message: "UnAuthorized Access",
     });
   }
-  const hashedPassword = bcrypt.hashSync(token, 10);
+  // const hashedPassword = bcrypt.hashSync(token, 10); // you will have to add it back when signup user from postman
   let result = bcrypt.compareSync(
     process.env.PUBLIC_ACCESS_TOKEN,
-    hashedPassword
+    token
   );
   if (result) {
     next();

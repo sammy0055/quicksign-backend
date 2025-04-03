@@ -1,6 +1,6 @@
 const { Op } = require("sequelize");
 const { User } = require("../models");
-const { Client } = require("../models/client");
+const { Client } = require("../models");
 class ClientService {
   constructor() {
     this.Client = Client;

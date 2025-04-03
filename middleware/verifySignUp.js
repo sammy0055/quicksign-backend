@@ -1,12 +1,15 @@
 /**
  * models import
  */
-const { User } = require("../models/user.js");
+// const { User } = require("../models/user.js");
+
+const db = require("../models");
+
 /**
  * middleware function to check if entered email already exists in database
  */
 checkDuplicateEmail = async (req, res, next) => {
-  User.findOne({
+  db.User.findOne({
     where: {
       email: req.body.email,
     },

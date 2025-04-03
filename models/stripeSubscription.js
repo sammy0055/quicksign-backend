@@ -3,7 +3,6 @@
  * include model from sequelize
  */
 const { Model } = require("sequelize");
-const db = require(".");
 /**
  * exporting model to create
  * @param sequelize sequelize library
@@ -15,7 +14,7 @@ const db = require(".");
  * Class to create a CompanyBilling object
  */
 
-const DataTypes = db.DataTypes;
+module.exports = (sequelize, DataTypes) => { 
 class StripeSubscription extends Model {
   /**
    * Helper method for defining associations.
@@ -92,12 +91,14 @@ StripeSubscription.init(
    * name of the model
    */
   {
-    sequelize: db.sequelize,
+    sequelize,
     modelName: "StripeSubscription",
   }
 );
 
-module.exports = { StripeSubscription };
-// module.exports = (sequelize, DataTypes) => {
-//   return StripeSubscription;
-// };
+return StripeSubscription
+}
+
+
+
+

@@ -79,8 +79,8 @@ exports.getAllSavedPdfInfo = async (req, res) => {
     const tasks = await Task.findAll({
       where: {
         userId: userId,
-        isSaved: 1,
-        isDeleted: 0,
+        isSaved: true,
+        isDeleted: false,
       },
       attributes: ["id", "documentName", "status", "fileUrl", "createdAt"],
     });
