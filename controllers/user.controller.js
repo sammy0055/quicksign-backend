@@ -39,71 +39,8 @@ class UserController {
   //   }
   // }
 
-  static async getUserByEmailOrId(req, res) {
-    const { email, id } = req.query;
 
-    try {
-      const user = await UserService.getUserByEmailOrId({ email, id });
-      return res.status(200).json({ data: user });
-    } catch (error) {
-      console.error("Get user error:", error);
-      return res.status(500).json({ message: error.message });
-    }
-  }
 
-  static async getPaginatedUsers(req, res) {
-    const { page, limit } = req.query;
-
-    try {
-      const users = await UserService.getUsers(page, limit);
-      return res.status(200).json({ data: users });
-    } catch (error) {
-      console.error("Get users error:", error);
-      return res.status(500).json({ message: error.message });
-    }
-  }
-
-  static async freezeUser(req, res) {
-    const { userId } = req.query;
-
-    try {
-      const data = await UserService.freezeUser(userId);
-      return res
-        .status(200)
-        .json({ message: "User freezed successfully.", data });
-    } catch (error) {
-      console.error("Freeze user error:", error);
-      return res.status(400).json({ message: error.message });
-    }
-  }
-
-  static async disconnectUser(req, res) {
-    const { userId } = req.query;
-
-    try {
-      const data = await UserService.disconnectUser(userId);
-      return res
-        .status(200)
-        .json({ message: "User disconnected successfully.", data });
-    } catch (error) {
-      console.error("Freeze user error:", error);
-      return res.status(400).json({ message: error.message });
-    }
-  }
-
-  static async activateUser(req, res) {
-    const { userId } = req.query;
-
-    try {
-      const data = await UserService.activateUser(userId);
-      return res
-        .status(200)
-        .json({ message: "User activeted successfully.", data });
-    } catch (error) {
-      console.error("Freeze user error:", error);
-      return res.status(400).json({ message: error.message });
-    }
-  }
 
   static async registerUser(req, res) {
     const errors = validationResult(req);

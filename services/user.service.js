@@ -61,66 +61,6 @@ class UserService {
   //   return { id: user.id, name: user.name, email: user.email, role: user.role };
   // }
 
-  static async testDB() {
-    try {
-      // await db.sequelize.authenticate();
-
-      // const user = await db.User.create({
-      //   id: uuidv4(),
-      //   firstName: "mzeee",
-      //   lastName: "loook",
-      //   email: "samko@gmail.com",
-      //   password: "hashedPassword",
-      //   role: "User",
-      //   stripeId: "stripeCustomerdddd",
-      // });
-      console.log("Connection has been established successfully.");
-    } catch (error) {
-      console.error("Unable to connect to the database:", error);
-    }
-  }
-
-  static async freezeUser(userId) {
-    const user = await db.User.findByPk(userId);
-    if (!user) {
-      throw new Error("User not found.");
-    }
-
-     await db.User.update(
-      { status: "freezed" },
-      { where: { id: userId } }
-    );
-    return await db.User.findByPk(userId);
-  }
-
-  static async disconnectUser(userId) {
-    const user = await db.User.findByPk(userId);
-    if (!user) {
-      throw new Error("User not found.");
-    }
-
-     await db.User.update(
-      { status: "inactive" },
-      { where: { id: userId } }
-    );
-
-    return await db.User.findByPk(userId);
-  }
-
-  static async activateUser(userId) {
-    const user = await db.User.findByPk(userId);
-    if (!user) {
-      throw new Error("User not found.");
-    }
-
-     await db.User.update(
-      { status: "active" },
-      { where: { id: userId } }
-    );
-
-    return await db.User.findByPk(userId);
-  }
-
   static async createUser({
     firstName,
     lastName,

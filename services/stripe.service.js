@@ -1,9 +1,12 @@
 const StripeSubscriptionService = require("./stripeSubscription.service");
 const SubscriptionService = require("../services/subscription.service");
 const db = require("../models");
+const { StripeProductService } = require("./stripeProduct.service");
 
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
+const WEB_BASE_URL = process.env.ANGULARURL || "";
 
 class StripeService {
   static async createCustomer(user) {
@@ -29,13 +32,9 @@ class StripeService {
     });
   }
 
-  static async createMonthlyPlan({
-    name,
-    amount = 0,
-    currency = "usd",
-    features = [],
-  }) {
+  static async createMonthlyPlan(data) {
     try {
+      const { name, amount = 0, currency = "usd", features = [] } = data;
       // Step 1: Create the Product
       const product = await stripe.products.create({
         name: name,
@@ -50,23 +49,28 @@ class StripeService {
         product: product.id,
       });
 
-      const updatedProduct = await stripe.products.update(product.id, {
+      await stripe.products.update(product.id, {
         default_price: price.id,
       });
-      return updatedProduct;
+
+      const planToSaveToDB = {
+        ...data,
+        id: product.id,
+        default_price: price.id,
+        price: amount,
+        interval: price.recurring.interval,
+        images: product.images || [],
+      };
+
+      return await StripeProductService.createProduct(planToSaveToDB);
     } catch (error) {
       console.error("Error creating plan:", error);
       throw error;
     }
   }
 
-  static async editPlan({
-    productId,
-    name,
-    amount = null,
-    currency = "usd",
-    features,
-  }) {
+  static async editPlan(data) {
+    const { productId, name, amount = 0, currency = "usd", features } = data;
     try {
       // Step 1: Update product details
       const updatedProduct = await stripe.products.update(productId, {
@@ -88,7 +92,8 @@ class StripeService {
       }
 
       const priceData = await stripe.prices.retrieve(priceId);
-      const isAmountChanged = parseInt(priceData.unit_amount_decimal) !== amount * 100;
+      const isAmountChanged =
+        parseInt(priceData.unit_amount_decimal) !== amount * 100;
 
       if (isAmountChanged) {
         // Create a new price
@@ -100,12 +105,20 @@ class StripeService {
         });
 
         // Update product to use new default price
-        return await stripe.products.update(productId, {
+        await stripe.products.update(productId, {
           default_price: price.id,
         });
+        const updatedData = {
+          ...data,
+          price: amount,
+          default_price: price.id,
+        };
+        await StripeProductService.updateProduct(updatedData);
+        return await StripeProductService.findProduct(productId);
       }
 
-      return updatedProduct;
+      await StripeProductService.updateProduct(data);
+      return await StripeProductService.findProduct(productId);
     } catch (error) {
       console.error("Error editing plan:", error);
       throw error;
@@ -114,29 +127,30 @@ class StripeService {
 
   static async archivePlan(productId) {
     try {
-        const archivedProduct = await stripe.products.update(productId, {
-            active: false
-        });
+      await stripe.products.update(productId, {
+        active: false,
+      });
 
-        return archivedProduct;
+      return await StripeProductService.removeProduct(productId);
     } catch (error) {
-        console.error('Error archiving product:', error);
-        throw error;
+      console.error("Error archiving product:", error);
+      throw error;
     }
-}
+  }
 
   static async getPlans() {
-    let plans = await stripe.products.list({ active: true });
+    // let plans = await stripe.products.list({ active: true });
 
-    for (let plan of plans.data) {
-      if (plan.default_price) {
-        const price = await stripe.prices.retrieve(plan.default_price);
-        plan["price"] = price.unit_amount_decimal / 100;
-        plan["currency"] = price.currency;
-        plan["interval"] = price.recurring.interval;
-      }
-    }
-    return plans;
+    // for (let plan of plans.data) {
+    //   if (plan.default_price) {
+    //     const price = await stripe.prices.retrieve(plan.default_price);
+    //     plan["price"] = price.unit_amount_decimal / 100;
+    //     plan["currency"] = price.currency;
+    //     plan["interval"] = price.recurring.interval;
+    //   }
+    // }
+    // return plans;
+    return await StripeProductService.findProducts();
   }
 
   static async getPlanDetail(planId) {
@@ -219,107 +233,201 @@ class StripeService {
   // }
 
   static async subscribe(stripeId, plan, userId) {
+    //Step 0: check if the customer has linked their card
+    // Step 1: Fetch payment methods
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: stripeId,
+      type: "card",
+    });
     // Step 1: Check for an existing subscription for the user
     const existingSubscription = await StripeSubscriptionService.findOne({
       where: { userId: userId },
     });
 
     let stripeSubscription;
+    const isPaymentMethodLinked = paymentMethods.data.length > 0;
 
-    if (existingSubscription) {
-      // Step 2: Update the existing Stripe subscription
-      stripeSubscription = await stripe.subscriptions.retrieve(
-        existingSubscription.stripeSubscriptionId
-      );
+    //payment method linked ----------------------------------------------
+    if (isPaymentMethodLinked) {
+      if (existingSubscription) {
+        console.log("====================================");
+        console.log("isPaymentMethodLinked:true, existingSubscription:true");
+        console.log("====================================");
+        // Step 2: Update the existing Stripe subscription
+        stripeSubscription = await stripe.subscriptions.retrieve(
+          existingSubscription.stripeSubscriptionId
+        );
 
-      const updatedSubscription = await stripe.subscriptions.update(
-        stripeSubscription.id,
-        {
+        const updatedSubscription = await stripe.subscriptions.update(
+          stripeSubscription.id,
+          {
+            items: [
+              {
+                id: stripeSubscription.items.data[0].id, // Use the existing item ID
+                price: plan.default_price, // Replace with the new plan's price
+              },
+            ],
+            proration_behavior: "create_prorations", // Adjust billing for mid-cycle changes
+          }
+        );
+
+        stripeSubscription = updatedSubscription;
+      }
+      if (!existingSubscription) {
+        console.log("====================================");
+        console.log("isPaymentMethodLinked:true, existingSubscription:false");
+        console.log("====================================");
+        // Step 3: Create a new subscription if none exists (no trial)
+        stripeSubscription = await stripe.subscriptions.create({
+          customer: stripeId, //stripeId is customer id
           items: [
             {
-              id: stripeSubscription.items.data[0].id, // Use the existing item ID
-              price: plan.default_price, // Replace with the new plan's price
+              price: plan.default_price,
             },
           ],
-          proration_behavior: "create_prorations", // Adjust billing for mid-cycle changes
-        }
-      );
+          trial_period_days: 0, // Explicitly disable trial period
+        });
+      }
 
-      stripeSubscription = updatedSubscription;
-    } else {
-      // Step 3: Create a new subscription if none exists (no trial)
-      stripeSubscription = await stripe.subscriptions.create({
-        customer: stripeId,
-        items: [
-          {
-            price: plan.default_price,
-          },
-        ],
-        trial_period_days: 0, // Explicitly disable trial period
-      });
+      return {
+        stripeSubscription,
+        message: "Subscription created successfully",
+      };
+    }
+
+    // no payment method linked -----------------------------------------------
+    if (!isPaymentMethodLinked) {
+      if (existingSubscription) {
+        console.log("====================================");
+        console.log("isPaymentMethodLinked:false, existingSubscription:true");
+        console.log("====================================");
+        const customerId = stripeId;
+
+        // Get existing subscriptions
+        // const subscriptions = await stripe.subscriptions.list({
+        //   customer: customerId,
+        //   status: "all",
+        //   limit: 1,
+        // });
+
+        // const existingSub = subscriptions.data[0];
+
+        // if (existingSub) {
+        //   // Cancel the old one if it's incomplete or past_due
+        //   if (
+        //     ["incomplete", "past_due", "incomplete_expired", "unpaid"].includes(
+        //       existingSub.status
+        //     )
+        //   ) {
+        //     await stripe.subscriptions.del(existingSub.id);
+        //   } else {
+        //     return { error: "User already has a working subscription" };
+        //   }
+        // }
+
+        // Now create a new Checkout Session
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          customer: customerId,
+          line_items: [
+            {
+              price: plan.default_price, // Replace with actual Stripe Price ID
+              quantity: 1,
+            },
+          ],
+          payment_method_types: ["card"],
+          success_url: `${WEB_BASE_URL}/success`,
+          cancel_url: `${WEB_BASE_URL}/cancel`,
+        });
+
+        return {
+          needsCheckout: true,
+          redirectUrl: session.url,
+          message: "Redirect user to this URL to add card and subscribe",
+        };
+      }
+      if (!existingSubscription) {
+        console.log("====================================");
+        console.log("isPaymentMethodLinked:false, existingSubscription:false");
+        console.log("====================================");
+        // ✅ No card + no subscription → create subscription checkout
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          customer: customerId,
+          line_items: [{ price: plan.default_price, quantity: 1 }],
+          payment_method_types: ["card"],
+          success_url: `${WEB_BASE_URL}/success`,
+          cancel_url: `${WEB_BASE_URL}/cancel`,
+        });
+
+        return { needsCheckout: true, redirectUrl: session.url };
+      }
     }
 
     // Step 4: Prepare subscription data for the database
-    const subscriptionData = {
-      stripeSubscriptionId: stripeSubscription.id,
-      stripePriceId: plan.default_price,
-      name: plan.name,
-      currency: plan.currency,
-      price: plan.price,
-      interval: plan.interval,
-      userId: userId,
-      status: "Active", // Always set to Active for subscriptions via this method
-      expiryDate: new Date(stripeSubscription.current_period_end * 1000),
-    };
+    // const subscriptionData = {
+    //   stripeSubscriptionId: stripeSubscription.id,
+    //   stripePriceId: plan.default_price,
+    //   name: plan.name,
+    //   currency: plan.currency,
+    //   price: plan.price,
+    //   interval: plan.interval,
+    //   userId: userId,
+    //   status: "Active", // Always set to Active for subscriptions via this method
+    //   expiryDate: new Date(stripeSubscription.current_period_end * 1000),
+    // };
 
-    // Step 5: Update or create the subscription in the database
-    let subscription;
-    if (existingSubscription) {
-      subscription = await StripeSubscriptionService.update(subscriptionData, {
-        where: { stripeSubscriptionId: stripeSubscription.id },
-      });
-    } else {
-      subscription = await StripeSubscriptionService.create(subscriptionData);
-    }
+    // // Step 5: Update or create the subscription in the database
+    // let subscription;
+    // if (existingSubscription) {
+    //   subscription = await StripeSubscriptionService.update(subscriptionData, {
+    //     where: { stripeSubscriptionId: stripeSubscription.id },
+    //   });
+    // } else {
+    //   subscription = await StripeSubscriptionService.create(subscriptionData);
+    // }
 
-    // Step 6: Update the Subscription table (if needed)
-    const subscriptionService = new SubscriptionService(db.Subscription);
-    const subscriptionRecord = await subscriptionService.findOne({
-      where: { userId: userId },
-    });
+    // // Step 6: Update the Subscription table (if needed)
+    // const subscriptionService = new SubscriptionService(db.Subscription);
+    // const subscriptionRecord = await subscriptionService.findOne({
+    //   where: { userId: userId },
+    // });
 
-    if (subscriptionRecord) {
-      await subscriptionService.update(
-        { stripePlanId: plan.default_price },
-        { where: { id: subscriptionRecord.id } }
-      );
-    } else {
-      await subscriptionService.create({
-        stripePlanId: plan.default_price,
-        userId: userId,
-      });
-    }
+    // if (subscriptionRecord) {
+    //   await subscriptionService.update(
+    //     { stripePlanId: plan.default_price },
+    //     { where: { id: subscriptionRecord.id } }
+    //   );
+    // } else {
+    //   await subscriptionService.create({
+    //     stripePlanId: plan.default_price,
+    //     userId: userId,
+    //   });
+    // }
 
     // Step 7: Calculate and update documentLimit based on the plan
-    let documentLimit = 0;
-    const planNameLower = plan.name.toLowerCase();
+    if (!plan.send_credits)
+      throw new Error("send_credits is not defined in the plan object");
+    let documentLimit = plan.send_credits;
+    // const planNameLower = plan.name.toLowerCase();
 
-    if (plan.interval === "month") {
-      if (planNameLower.includes("bronze")) documentLimit = 20;
-      else if (planNameLower.includes("silver")) documentLimit = 45;
-      else if (planNameLower.includes("gold")) documentLimit = 70;
-    } else if (plan.interval === "year") {
-      if (planNameLower.includes("bronze")) documentLimit = 200;
-      else if (planNameLower.includes("silver")) documentLimit = 360;
-      else if (planNameLower.includes("gold")) documentLimit = 840;
-    }
+    // if (plan.interval === "month") {
+    //   if (planNameLower.includes("bronze")) documentLimit = 20;
+    //   else if (planNameLower.includes("silver")) documentLimit = 45;
+    //   else if (planNameLower.includes("gold")) documentLimit = 70;
+    // } else if (plan.interval === "year") {
+    //   if (planNameLower.includes("bronze")) documentLimit = 200;
+    //   else if (planNameLower.includes("silver")) documentLimit = 360;
+    //   else if (planNameLower.includes("gold")) documentLimit = 840;
+    // }
 
     const userUpdated = await db.User.update(
       { documentLimit },
       { where: { id: userId } }
     );
 
-    return subscription;
+    // return subscription;
+    throw new Error("Subscription creation not implemented yet");
   }
 
   static async createTrialSubscription({

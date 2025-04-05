@@ -1,5 +1,8 @@
 const stripeController = {};
 const StripeService = require("../services/stripe.service.js");
+const {
+  StripeProductService,
+} = require("../services/stripeProduct.service.js");
 const StripeSubscriptionService = require("../services/stripeSubscription.service.js");
 
 stripeController.createPlan = async (req, res) => {
@@ -85,7 +88,7 @@ stripeController.getPlans = async (req, res) => {
     res.status(200).send({
       code: 200,
       // message: "Stripe Plans Retreived Successfully",
-      data: stripePlans.data,
+      data: stripePlans,
     });
   } catch (error) {
     console.log("error", error);
@@ -95,19 +98,23 @@ stripeController.getPlans = async (req, res) => {
 
 stripeController.subscribe = async (req, res) => {
   try {
+    const productId = req.body.productId;
+    if (!productId) throw new Error("Product Id is required");
+    const plan = await StripeProductService.findProduct(productId);
+    if (!plan) throw new Error("Product not found");
     const subscription = await StripeService.subscribe(
-      req.stripeId,
-      req.body,
+      req.stripeId, //stripeId is customer id
+      plan, // product package to subscribe to
       req.userId
     );
-    res.status(200).send({
-      code: 200,
-      message: "Your plan activated Successfully",
+    res.status(200).json({
       data: subscription,
     });
   } catch (error) {
     console.log("error", error);
-    return res.status(500).send(error);
+    return res
+      .status(500)
+      .json({ error: { message: error.message, code: "subscription-failed" } });
   }
 };
 
@@ -133,7 +140,7 @@ stripeController.getSubscriptions = async (req, res) => {
     const whereClause = {
       where: {
         userId: req.userId,
-        isDeleted: 0,
+        isDeleted: false,
       },
     };
     let subscriptionsData = await StripeSubscriptionService.findOne(

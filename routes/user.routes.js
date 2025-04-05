@@ -50,11 +50,7 @@ router.post(
 );
 
 router.get("/info", checkAuth.verifyToken, UserController.userInfo);
-router.get("/users", UserController.getPaginatedUsers);
-router.get("/freeze-user", UserController.freezeUser);
-router.get("/disconnect-user", UserController.disconnectUser);
-router.get("/activate-user", UserController.activateUser);
-router.get("/userInfo", UserController.getUserByEmailOrId);
+
 /**
  * post type router call to check user email
  */

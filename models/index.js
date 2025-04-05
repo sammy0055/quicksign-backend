@@ -20,6 +20,8 @@ const sequelize = new Sequelize(
   }
 );
 
+// systme user
+const systemAdminUser = require("./systemAdminUser")(sequelize, DataTypes);
 // initialize all models
 const User = require("./user")(sequelize, DataTypes);
 const Billing = require("./billing")(sequelize, DataTypes);
@@ -37,6 +39,7 @@ const Submission = require("./submission")(sequelize, DataTypes);
 const Setting = require("./setting")(sequelize, DataTypes);
 const Notification = require("./notification")(sequelize, DataTypes);
 const GroupClient = require("./groupClient")(sequelize, DataTypes);
+const stripeProduct = require("./stripeProduct")(sequelize, DataTypes);
 
 User.associate({
   Client,
@@ -65,19 +68,21 @@ TaskClient.associate({});
 const db = {
   sequelize,
   Sequelize,
+  systemAdminUser,
   User,
   Billing,
   Client,
   Group,
   StripeSubscription,
   Subscription,
+  stripeProduct,
   Task,
   TaskClient,
   TaskGroup,
   Submission,
   Setting,
   Notification,
-  GroupClient
+  GroupClient,
 };
 
 module.exports = db;

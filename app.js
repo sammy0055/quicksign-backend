@@ -56,6 +56,7 @@ const socket = require("socket.io")(server, {
 });
 
 // Routes
+const SystemUser = require("./routes/system-user.route");
 const UserRoutes = require("./routes/user.routes");
 const TaskRoutes = require("./routes/task.routes");
 const ClientRoutes = require("./routes/client.routes");
@@ -67,6 +68,7 @@ const BillingRoutes = require("./routes/billing.routes");
 const NotificationRoutes = require("./routes/notification.routes");
 const UserService = require("./services/user.service");
 
+app.use("/systemUser", SystemUser);
 app.use("/users", UserRoutes);
 app.use("/task", TaskRoutes);
 app.use("/client", ClientRoutes);
