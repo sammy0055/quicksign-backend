@@ -20,7 +20,7 @@ RUN yarn install
 
 # Rebuild canvas from source inside Docker to avoid ELF mismatch
 # RUN npm rebuild canvas --build-from-source
-
+EXPOSE 8080
 # Copy rest of app AFTER installing modules
 COPY . .
 
