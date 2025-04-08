@@ -1,35 +1,27 @@
-# Use the Lambda Node.js 18 base image
-FROM public.ecr.aws/lambda/nodejs:18
+FROM node:18.17-bullseye-slim
+WORKDIR /app
 
-# Set working directory to /var/task, where Lambda expects the code
-WORKDIR /var/task
-
-# Install build tools and libraries required for canvas
-RUN yum install -y \
-    gcc-c++ \
-    make \
+# Install system dependencies for native modules like canvas
+RUN apt-get update && apt-get install -y \
     git \
-    pkgconfig \
-    cairo-devel \
-    pango-devel \
-    libjpeg-devel \
-    giflib-devel \
-    librsvg2-devel 
+    build-essential \
+    pkg-config \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev 
 
-# Install yarn globally
-RUN npm install -g yarn@1.22.19
-
-# Copy package.json and yarn.lock (if present) for dependency installation
+# Ensure host node_modules won't be copied
 COPY package*.json ./
 
-# Install dependencies with yarn
-RUN yarn install --ignore-scripts
+# Install everything inside Docker
+RUN yarn install 
 
-# Explicitly install and build canvas from source
-RUN npm install canvas --build-from-source --verbose
+# Rebuild canvas from source inside Docker to avoid ELF mismatch
+# RUN npm rebuild canvas --build-from-source
 
-# Copy the rest of the application files
+# Copy rest of app AFTER installing modules
 COPY . .
 
-# Set the Lambda handler
-CMD ["app.handler"]
+CMD ["node", "app.js"]
