@@ -362,7 +362,7 @@ exports.createTask = async (req, res) => {
     });
     const uniqueClients = Object.values(uniqueClientsMap);
 
-    // Send notifications based on channel
+    // Send notifications based on channel --------------------------
     if (data.sendingChannel === "email") {
       for (const client of uniqueClients) {
         if (client.email) {
