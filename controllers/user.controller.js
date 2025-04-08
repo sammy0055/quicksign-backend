@@ -39,9 +39,6 @@ class UserController {
   //   }
   // }
 
-
-
-
   static async registerUser(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -337,6 +334,18 @@ class UserController {
       console.error("error", error);
       return res.status(500).send(error);
     }
+  }
+
+  static async getUserDetailsById(req, res) {
+    const userId = req.query.userId;
+    if (!userId)
+      return res
+        .status(401)
+        .json({ error: { message: "Unauthorized: No user ID found" } });
+    const userInfo = await UserService.getUserInfo(userId);
+    if (!userInfo)
+      return res.status(401).json({ error: { message: "User not found" } });
+    return res.status(200).json({ data: userInfo });
   }
 
   static async userInfo(req, res) {

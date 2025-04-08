@@ -50,6 +50,7 @@ router.post(
 );
 
 router.get("/info", checkAuth.verifyToken, UserController.userInfo);
+router.get("/details", checkAuth.verifyToken, UserController.getUserDetailsById);
 
 /**
  * post type router call to check user email

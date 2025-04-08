@@ -20,6 +20,7 @@ class SystemUserController {
       const data = await SystemUserService.createSytemUser({ ...req.body });
       res.status(200).json({ data });
     } catch (error) {
+      console.error(error)
       res.status(400).json({
         error: {
           code: "system-user-auth-failed",
@@ -45,7 +46,7 @@ class SystemUserController {
     const { userId } = req.query;
 
     try {
-      const data = await UserService.freezeUser(userId);
+      const data = await SystemUserService.freezeUser(userId);
       return res
         .status(200)
         .json({ message: "User freezed successfully.", data });
@@ -59,7 +60,7 @@ class SystemUserController {
     const { userId } = req.query;
 
     try {
-      const data = await UserService.disconnectUser(userId);
+      const data = await SystemUserService.disconnectUser(userId);
       return res
         .status(200)
         .json({ message: "User disconnected successfully.", data });
@@ -73,7 +74,7 @@ class SystemUserController {
     const { userId } = req.query;
 
     try {
-      const data = await UserService.activateUser(userId);
+      const data = await SystemUserService.activateUser(userId);
       return res
         .status(200)
         .json({ message: "User activeted successfully.", data });

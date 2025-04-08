@@ -72,44 +72,44 @@ class SystemUserService {
   }
 
   static async freezeUser(userId) {
-    const user = await db.systemAdminUser.findByPk(userId);
+    const user = await db.User.findByPk(userId);
     if (!user) {
       throw new Error("User not found.");
     }
 
-    await db.systemAdminUser.update(
+    await db.User.update(
       { status: "freezed" },
       { where: { id: userId } }
     );
-    return await db.systemAdminUser.findByPk(userId);
+    return await db.User.findByPk(userId);
   }
 
   static async disconnectUser(userId) {
-    const user = await db.systemAdminUser.findByPk(userId);
+    const user = await db.User.findByPk(userId);
     if (!user) {
       throw new Error("User not found.");
     }
 
-    await db.systemAdminUser.update(
+    await db.User.update(
       { status: "inactive" },
       { where: { id: userId } }
     );
 
-    return await db.systemAdminUser.findByPk(userId);
+    return await db.User.findByPk(userId);
   }
 
   static async activateUser(userId) {
-    const user = await db.systemAdminUser.findByPk(userId);
+    const user = await db.User.findByPk(userId);
     if (!user) {
       throw new Error("User not found.");
     }
 
-    await db.systemAdminUser.update(
+    await db.User.update(
       { status: "active" },
       { where: { id: userId } }
     );
 
-    return await db.systemAdminUser.findByPk(userId);
+    return await db.User.findByPk(userId);
   }
 }
 

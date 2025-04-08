@@ -1,6 +1,5 @@
 const StripeSubscriptionService = require("./stripeSubscription.service");
 const SubscriptionService = require("../services/subscription.service");
-const db = require("../models");
 const { StripeProductService } = require("./stripeProduct.service");
 
 require("dotenv").config();
@@ -34,7 +33,7 @@ class StripeService {
 
   static async createMonthlyPlan(data) {
     try {
-      const { name, amount = 0, currency = "usd", features = [] } = data;
+      const { name, price = 0, currency = "usd", features = [] } = data;
       // Step 1: Create the Product
       const product = await stripe.products.create({
         name: name,
@@ -42,23 +41,23 @@ class StripeService {
       });
 
       // Step 2: Create the Monthly Price (Recurring Plan)
-      const price = await stripe.prices.create({
-        unit_amount: amount * 100, // Convert to cents
+      const _price = await stripe.prices.create({
+        unit_amount: price * 100, // Convert to cents
         currency: currency,
         recurring: { interval: "month" },
         product: product.id,
       });
 
       await stripe.products.update(product.id, {
-        default_price: price.id,
+        default_price: _price.id,
       });
 
       const planToSaveToDB = {
         ...data,
         id: product.id,
-        default_price: price.id,
-        price: amount,
-        interval: price.recurring.interval,
+        default_price: _price.id,
+        price: price,
+        interval: _price.recurring.interval,
         images: product.images || [],
       };
 
@@ -70,7 +69,7 @@ class StripeService {
   }
 
   static async editPlan(data) {
-    const { productId, name, amount = 0, currency = "usd", features } = data;
+    const { productId, name, price = 0, currency = "usd", features } = data;
     try {
       // Step 1: Update product details
       const updatedProduct = await stripe.products.update(productId, {
@@ -93,12 +92,12 @@ class StripeService {
 
       const priceData = await stripe.prices.retrieve(priceId);
       const isAmountChanged =
-        parseInt(priceData.unit_amount_decimal) !== amount * 100;
+        parseInt(priceData.unit_amount_decimal) !== price * 100;
 
       if (isAmountChanged) {
         // Create a new price
-        const price = await stripe.prices.create({
-          unit_amount: amount * 100, // Convert to cents
+        const _price = await stripe.prices.create({
+          unit_amount: price * 100, // Convert to cents
           currency: currency,
           recurring: { interval: "month" },
           product: productId,
@@ -106,12 +105,12 @@ class StripeService {
 
         // Update product to use new default price
         await stripe.products.update(productId, {
-          default_price: price.id,
+          default_price: _price.id,
         });
         const updatedData = {
           ...data,
-          price: amount,
-          default_price: price.id,
+          price: price,
+          default_price: _price.id,
         };
         await StripeProductService.updateProduct(updatedData);
         return await StripeProductService.findProduct(productId);
@@ -127,6 +126,11 @@ class StripeService {
 
   static async archivePlan(productId) {
     try {
+      const trialPriceId = process.env.STRIPE_TRIAL_PRICE_ID;
+      const product = await stripe.products.retrieve(productId);
+      if (product.default_price === trialPriceId)
+        throw new Error("Cannot archive trial period plan");
+
       await stripe.products.update(productId, {
         active: false,
       });
@@ -139,17 +143,6 @@ class StripeService {
   }
 
   static async getPlans() {
-    // let plans = await stripe.products.list({ active: true });
-
-    // for (let plan of plans.data) {
-    //   if (plan.default_price) {
-    //     const price = await stripe.prices.retrieve(plan.default_price);
-    //     plan["price"] = price.unit_amount_decimal / 100;
-    //     plan["currency"] = price.currency;
-    //     plan["interval"] = price.recurring.interval;
-    //   }
-    // }
-    // return plans;
     return await StripeProductService.findProducts();
   }
 
@@ -166,74 +159,7 @@ class StripeService {
     return plan;
   }
 
-  // static async subscribe(stripeId, plan, userId) {
-  //   const stripeSubscription = await stripe.subscriptions.create({
-  //     customer: stripeId,
-  //     items: [
-  //       {
-  //         price: plan.default_price,
-  //       },
-  //     ],
-  //   });
-  //   const subscriptionData = {
-  //     stripeSubscriptionId: stripeSubscription.id,
-  //     stripePriceId: plan.default_price,
-  //     name: plan.name,
-  //     currency: plan.currency,
-  //     price: plan.price,
-  //     interval: plan.interval,
-  //     userId: userId,
-  //     status: stripeSubscription.trial_end
-  //       ? "Trial"
-  //       : stripeSubscription.status,
-  //     expiryDate: new Date(stripeSubscription.current_period_end * 1000),
-  //     status: stripeSubscription.status,
-  //   };
-
-  //   const subscription = await StripeSubscriptionService.create(
-  //     subscriptionData
-  //   );
-
-  //   // add subscription to table
-  //   const subscriptionService = new SubscriptionService(db.Subscription);
-  //   await subscriptionService.create({
-  //     stripePlanId: stripeSubscription.stripePlanId, // Will be updated when the user subscribes
-  //     userId: userId,
-  //   });
-
-  //   // Calculate the document limit based on the plan purchased.
-  //   // For monthly plans: Bronze = 20, Silver = 45, Gold = 70.
-  //   // For yearly plans: Bronze = 200, Silver = 360, Gold = 840.
-  //   let documentLimit = 0;
-  //   const planNameLower = plan.name.toLowerCase();
-
-  //   if (plan.interval === "month") {
-  //     if (planNameLower.includes("bronze")) {
-  //       documentLimit = 20;
-  //     } else if (planNameLower.includes("silver")) {
-  //       documentLimit = 45;
-  //     } else if (planNameLower.includes("gold")) {
-  //       documentLimit = 70;
-  //     }
-  //   } else if (plan.interval === "year") {
-  //     if (planNameLower.includes("bronze")) {
-  //       documentLimit = 200;
-  //     } else if (planNameLower.includes("silver")) {
-  //       documentLimit = 360;
-  //     } else if (planNameLower.includes("gold")) {
-  //       documentLimit = 840;
-  //     }
-  //   }
-
-  //   const userUpdated = await db.User.update(
-  //     { documentLimit },
-  //     { where: { id: userId } }
-  //   );
-  //   return subscription;
-  // }
-
   static async subscribe(stripeId, plan, userId) {
-    //Step 0: check if the customer has linked their card
     // Step 1: Fetch payment methods
     const paymentMethods = await stripe.paymentMethods.list({
       customer: stripeId,
@@ -250,9 +176,7 @@ class StripeService {
     //payment method linked ----------------------------------------------
     if (isPaymentMethodLinked) {
       if (existingSubscription) {
-        console.log("====================================");
-        console.log("isPaymentMethodLinked:true, existingSubscription:true");
-        console.log("====================================");
+        // isPaymentMethodLinked:true, existingSubscription:true
         // Step 2: Update the existing Stripe subscription
         stripeSubscription = await stripe.subscriptions.retrieve(
           existingSubscription.stripeSubscriptionId
@@ -274,9 +198,7 @@ class StripeService {
         stripeSubscription = updatedSubscription;
       }
       if (!existingSubscription) {
-        console.log("====================================");
-        console.log("isPaymentMethodLinked:true, existingSubscription:false");
-        console.log("====================================");
+        // isPaymentMethodLinked:true, existingSubscription:false
         // Step 3: Create a new subscription if none exists (no trial)
         stripeSubscription = await stripe.subscriptions.create({
           customer: stripeId, //stripeId is customer id
@@ -295,36 +217,10 @@ class StripeService {
       };
     }
 
-    // no payment method linked -----------------------------------------------
+    // no payment method linked ---------------------------------------------
     if (!isPaymentMethodLinked) {
       if (existingSubscription) {
-        console.log("====================================");
-        console.log("isPaymentMethodLinked:false, existingSubscription:true");
-        console.log("====================================");
         const customerId = stripeId;
-
-        // Get existing subscriptions
-        // const subscriptions = await stripe.subscriptions.list({
-        //   customer: customerId,
-        //   status: "all",
-        //   limit: 1,
-        // });
-
-        // const existingSub = subscriptions.data[0];
-
-        // if (existingSub) {
-        //   // Cancel the old one if it's incomplete or past_due
-        //   if (
-        //     ["incomplete", "past_due", "incomplete_expired", "unpaid"].includes(
-        //       existingSub.status
-        //     )
-        //   ) {
-        //     await stripe.subscriptions.del(existingSub.id);
-        //   } else {
-        //     return { error: "User already has a working subscription" };
-        //   }
-        // }
-
         // Now create a new Checkout Session
         const session = await stripe.checkout.sessions.create({
           mode: "subscription",
@@ -336,8 +232,8 @@ class StripeService {
             },
           ],
           payment_method_types: ["card"],
-          success_url: `${WEB_BASE_URL}/success`,
-          cancel_url: `${WEB_BASE_URL}/cancel`,
+          success_url: `${WEB_BASE_URL}`,
+          cancel_url: `${WEB_BASE_URL}`,
         });
 
         return {
@@ -347,86 +243,21 @@ class StripeService {
         };
       }
       if (!existingSubscription) {
-        console.log("====================================");
-        console.log("isPaymentMethodLinked:false, existingSubscription:false");
-        console.log("====================================");
+        // isPaymentMethodLinked:false, existingSubscription:false
         // ✅ No card + no subscription → create subscription checkout
         const session = await stripe.checkout.sessions.create({
           mode: "subscription",
           customer: customerId,
           line_items: [{ price: plan.default_price, quantity: 1 }],
           payment_method_types: ["card"],
-          success_url: `${WEB_BASE_URL}/success`,
-          cancel_url: `${WEB_BASE_URL}/cancel`,
+          success_url: `${WEB_BASE_URL}`,
+          cancel_url: `${WEB_BASE_URL}`,
         });
 
         return { needsCheckout: true, redirectUrl: session.url };
       }
     }
 
-    // Step 4: Prepare subscription data for the database
-    // const subscriptionData = {
-    //   stripeSubscriptionId: stripeSubscription.id,
-    //   stripePriceId: plan.default_price,
-    //   name: plan.name,
-    //   currency: plan.currency,
-    //   price: plan.price,
-    //   interval: plan.interval,
-    //   userId: userId,
-    //   status: "Active", // Always set to Active for subscriptions via this method
-    //   expiryDate: new Date(stripeSubscription.current_period_end * 1000),
-    // };
-
-    // // Step 5: Update or create the subscription in the database
-    // let subscription;
-    // if (existingSubscription) {
-    //   subscription = await StripeSubscriptionService.update(subscriptionData, {
-    //     where: { stripeSubscriptionId: stripeSubscription.id },
-    //   });
-    // } else {
-    //   subscription = await StripeSubscriptionService.create(subscriptionData);
-    // }
-
-    // // Step 6: Update the Subscription table (if needed)
-    // const subscriptionService = new SubscriptionService(db.Subscription);
-    // const subscriptionRecord = await subscriptionService.findOne({
-    //   where: { userId: userId },
-    // });
-
-    // if (subscriptionRecord) {
-    //   await subscriptionService.update(
-    //     { stripePlanId: plan.default_price },
-    //     { where: { id: subscriptionRecord.id } }
-    //   );
-    // } else {
-    //   await subscriptionService.create({
-    //     stripePlanId: plan.default_price,
-    //     userId: userId,
-    //   });
-    // }
-
-    // Step 7: Calculate and update documentLimit based on the plan
-    if (!plan.send_credits)
-      throw new Error("send_credits is not defined in the plan object");
-    let documentLimit = plan.send_credits;
-    // const planNameLower = plan.name.toLowerCase();
-
-    // if (plan.interval === "month") {
-    //   if (planNameLower.includes("bronze")) documentLimit = 20;
-    //   else if (planNameLower.includes("silver")) documentLimit = 45;
-    //   else if (planNameLower.includes("gold")) documentLimit = 70;
-    // } else if (plan.interval === "year") {
-    //   if (planNameLower.includes("bronze")) documentLimit = 200;
-    //   else if (planNameLower.includes("silver")) documentLimit = 360;
-    //   else if (planNameLower.includes("gold")) documentLimit = 840;
-    // }
-
-    const userUpdated = await db.User.update(
-      { documentLimit },
-      { where: { id: userId } }
-    );
-
-    // return subscription;
     throw new Error("Subscription creation not implemented yet");
   }
 

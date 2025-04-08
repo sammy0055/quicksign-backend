@@ -8,8 +8,14 @@ const cors = require("cors");
 require("dotenv").config();
 const { sequelize } = require("./models");
 const path = require("path");
+const { stripeWebhook } = require("./controllers/stripe-webhook");
 
 const app = express();
+app.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  stripeWebhook
+);
 
 const cron = require("node-cron");
 const fs = require("fs").promises;
