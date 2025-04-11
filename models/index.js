@@ -40,6 +40,7 @@ const Setting = require("./setting")(sequelize, DataTypes);
 const Notification = require("./notification")(sequelize, DataTypes);
 const GroupClient = require("./groupClient")(sequelize, DataTypes);
 const stripeProduct = require("./stripeProduct")(sequelize, DataTypes);
+const pdfTemplate = require("./pdfTemplate")(sequelize, DataTypes);
 
 User.associate({
   Client,
@@ -83,6 +84,7 @@ const db = {
   Setting,
   Notification,
   GroupClient,
+  pdfTemplate,
 };
 
 module.exports = db;

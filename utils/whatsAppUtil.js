@@ -1,5 +1,5 @@
 // helpers/whatsAppUtil.js
-
+require("dotenv").config();
 const twilio = require("twilio");
 
 /**

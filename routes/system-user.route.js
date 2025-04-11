@@ -6,6 +6,7 @@ const {
   validateSystemUserSignup,
   verifySystemUserToken,
 } = require("../middleware/validate-system-user");
+const { uploadPdfTemplateToStorage } = require("../helpers/pdfTemplateUpload");
 const router = express.Router();
 
 router.post("/user-login", SystemUserController.loginSytemUser);
@@ -40,4 +41,22 @@ router.get(
   SystemUserController.getUserByEmailOrId
 );
 
+router.put(
+  "/upload-pdf-template",
+  verifySystemUserToken,
+  uploadPdfTemplateToStorage.single("file"),
+  SystemUserController.pdfTemplateUpload
+);
+
+router.get(
+  "/pdf-templates",
+  verifySystemUserToken,
+  SystemUserController.getPaginatedPdfTemplate
+);
+
+router.delete(
+  "/remove-pdf-template",
+  verifySystemUserToken,
+  SystemUserController.removePdfTemplate
+);
 module.exports = router;

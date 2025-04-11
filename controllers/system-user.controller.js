@@ -1,7 +1,8 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const { SystemUserService } = require("../services/system-user.service");
 const UserService = require("../services/user.service");
+const { generatePreview } = require("../helpers/pdfTemplateUpload");
+const { pdfTemplate } = require("../models");
+const PdfTemplateService = require("../services/pdfTemplate.service");
 
 class SystemUserController {
   static loginSytemUser = async (req, res) => {
@@ -9,9 +10,8 @@ class SystemUserController {
     try {
       const data = await SystemUserService.login(req.body);
       res.status(200).json({ message: "User logged in successfully.", data });
-     
     } catch (error) {
-        res.status(400).json({error:{message:error.message}})
+      res.status(400).json({ error: { message: error.message } });
     }
   };
 
@@ -20,7 +20,7 @@ class SystemUserController {
       const data = await SystemUserService.createSytemUser({ ...req.body });
       res.status(200).json({ data });
     } catch (error) {
-      console.error(error)
+      console.error(error);
       res.status(400).json({
         error: {
           code: "system-user-auth-failed",
@@ -93,6 +93,43 @@ class SystemUserController {
     } catch (error) {
       console.error("Get user error:", error);
       return res.status(500).json({ message: error.message });
+    }
+  }
+
+  static async pdfTemplateUpload(req, res) {
+    try {
+      const thumbnailFileName = await generatePreview(
+        req.fileMetadata.newFileName
+      );
+      const data = await pdfTemplate.create({
+        ...req.fileMetadata,
+        thumbnailFileName,
+      });
+      res.status(200).json({ data });
+    } catch (error) {
+      res.status(500).json({ error: { message: error.message } });
+    }
+  }
+
+  static async getPaginatedPdfTemplate(req, res) {
+    try {
+      const { page, limit } = req.query;
+      const data = await PdfTemplateService.getPdfTemplates(page, limit);
+      res.status(200).json({ data });
+    } catch (error) {
+      res.status(500).json({ error: { message: error.message } });
+    }
+  }
+
+  static async removePdfTemplate(req, res) {
+    try {
+      const { fileName, documentId } = req.query;
+      if (!fileName && !documentId)
+        throw new Error("fileName and documentId is required");
+      await PdfTemplateService.removePdfTemplateFile(fileName, documentId);
+      res.status(200).json({ message: "file removed successfully" });
+    } catch (error) {
+      res.status(500).json({ error: { message: error.message } });
     }
   }
 }

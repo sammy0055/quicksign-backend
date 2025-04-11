@@ -11,11 +11,7 @@ const path = require("path");
 const { stripeWebhook } = require("./controllers/stripe-webhook");
 
 const app = express();
-app.post(
-  "/webhook",
-  express.raw({ type: "application/json" }),
-  stripeWebhook
-);
+app.post("/webhook", express.raw({ type: "application/json" }), stripeWebhook);
 
 const cron = require("node-cron");
 const fs = require("fs").promises;
@@ -24,6 +20,7 @@ const serverless = require("serverless-http");
 // Middleware
 app.use(cors());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 app.use(
   express.json({
     limit: "50mb",
@@ -33,6 +30,11 @@ app.use(
   bodyParser.json({
     limit: "50mb",
   })
+);
+
+app.use(
+  "/thumbnails",
+  express.static(path.join(__dirname, "./pdfTemplates/thumbnail"))
 );
 
 // Error-Handling Middleware (Must be after all routes)
@@ -73,6 +75,7 @@ const StripeRoutes = require("./routes/stripe.routes");
 const BillingRoutes = require("./routes/billing.routes");
 const NotificationRoutes = require("./routes/notification.routes");
 const UserService = require("./services/user.service");
+const userDemoPdfTemplateRoute = require("./routes/demo-template.route")
 
 app.use("/systemUser", SystemUser);
 app.use("/users", UserRoutes);
@@ -84,6 +87,7 @@ app.use("/subscription", SubscriptionRoutes);
 app.use("/stripe", StripeRoutes);
 app.use("/billing", BillingRoutes);
 app.use("/notification", NotificationRoutes);
+app.use("/demotemplate", userDemoPdfTemplateRoute)
 
 app.get("/test", async (req, res) => {
   await UserService.testDB();
