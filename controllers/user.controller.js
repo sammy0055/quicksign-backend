@@ -204,7 +204,7 @@ class UserController {
         data,
       });
     } catch (error) {
-      return res.status(500).json({ error: { message: error.message } });
+      return res.status(500).json({  message: error.message });
     }
   }
 
@@ -216,7 +216,7 @@ class UserController {
         data,
       });
     } catch (error) {
-      res.status(500).json({ error: { message: error.message } });
+      res.status(500).json({  message: error.message });
     }
   }
 
@@ -232,7 +232,7 @@ class UserController {
       const data = await db.User.destroy({ where: { id: companyUserId } });
       return res.status(201).json({ data, message: "remove successfully" });
     } catch (error) {
-      res.status(500).json({ error: { message: error.message } });
+      res.status(500).json({  message: error.message });
     }
   }
 
@@ -403,7 +403,7 @@ class UserController {
       });
     } catch (error) {
       console.error("error", error);
-      return res.status(500).send(error);
+      return res.status(500).send({ message: error.message});
     }
   }
 
