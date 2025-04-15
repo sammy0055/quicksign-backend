@@ -11,34 +11,104 @@ const client = new OAuth2Client(process.env.GOOGLE_AUTH_CLIENT_ID); // Replace w
 const JWT_SECRET = "your-jwt-secret";
 
 class UserController {
-  // static async registerUser(req, res) {
-  //   const errors = validationResult(req);
-  //   if (!errors.isEmpty()) {
-  //     return res.status(400).json({ errors: errors.array() });
-  //   }
+  static async registerWithGoogle(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
 
-  //   const { firstName, lastName, email, password, role = "Admin" } = req.body; // Include role
+      const {
+        firstName,
+        lastName,
+        email,
+        password,
+        role = "Super-Admin",
+        googleIdToken,
+      } = req.body;
 
-  //   try {
-  //     // Step 1: Create the user
-  //     const user = await UserService.createUser({
-  //       firstName,
-  //       lastName,
-  //       email,
-  //       password,
-  //       role,
-  //     });
+      // Check if user already exists
+      let existingUser = await UserService.getUserByEmail(email);
+      const ticket = await client.verifyIdToken({
+        idToken: googleIdToken,
+        audience: process.env.GOOGLE_AUTH_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+      if (!ticket) throw new Error("authentication failed");
+      if (existingUser) {
+        // login user and respond
+        if (payload.email !== email) {
+          return res
+            .status(400)
+            .json({ error: "Email mismatch with Google token" });
+        }
 
-  //     return res.status(201).json({
-  //       message: "User registered successfully.",
-  //       user,
-  //     });
-  //   } catch (error) {
-  //     console.error("Registration error:", error);
-  //     return res.status(500).json({ message: error.message });
-  //   }
-  // }
+        // Find user by email or Google ID
+        const user = await UserService.findOne({ where: { email } });
+        if (!user) {
+          return res
+            .status(401)
+            .json({ error: "User not found. Please sign up first." });
+        }
 
+        // Optionally check googleId if stored
+        if (user.googleId && user.googleId !== payload.sub) {
+          return res.status(401).json({ error: "Google ID mismatch" });
+        }
+
+        // Generate JWT for both flows
+        const token = jwt.sign(
+          {
+            id: user.id,
+            role: user.role,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            fullName: user.firstName + " " + user.lastName,
+            stripeId: user.stripeId,
+          },
+          process.env.SECRET,
+          { expiresIn: "3h" }
+        );
+        const decoded = jwt.decode(token);
+        return res.status(200).json({
+          message: "User logged in successfully.",
+          data: {
+            user,
+            token,
+            expiresAt: decoded.exp,
+          },
+        });
+      } else {
+        const user = await UserService.createUserWithGoogle({
+          firstName,
+          lastName,
+          email,
+          googleId: payload.sub,
+          role,
+        });
+
+        const token = jwt.sign(
+          { id: user.id, email: user.email, role: user.role },
+          process.env.SECRET || "your-jwt-secret",
+          { expiresIn: "1h" }
+        );
+
+        const decoded = jwt.decode(token);
+        return res.status(200).json({
+          message: "User logged in successfully.",
+          data: {
+            message: "User logged in successfully.",
+            user,
+            token,
+            expiresAt: decoded.exp,
+          },
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ error: { message: error.message } });
+    }
+  }
   static async registerUser(req, res) {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

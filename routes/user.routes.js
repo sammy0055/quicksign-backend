@@ -40,6 +40,7 @@ const authPublicToken = require("../middleware/verifyPublicToken");
 const { validateCompanyUser } = require("../middleware/validate-system-user");
 
 router.post("/login", UserController.loginUser);
+router.post("/google-signin", UserController.registerWithGoogle);
 /**
  * post type router call to register user with middle ware to check whether the email already exists or not and to verify token
  */
