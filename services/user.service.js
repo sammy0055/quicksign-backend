@@ -211,10 +211,12 @@ class UserService {
 
     // Calculate offset (skip) value
     const offset = (page - 1) * limit;
-
-    // Get total user count
-    const totalUsers = await db.User.count();
     const user = await db.User.findByPk(userId);
+    // Get total user count
+    const totalUsers = await db.User.count({
+      where: { companyId: user.companyId },
+    });
+   
     if (!user) throw new Error("user does not exist");
 
     // Fetch users with pagination
