@@ -6,68 +6,50 @@ require("dotenv").config();
 const StripeService = require("../services/stripe.service");
 const StripeSubscriptionService = require("../services/stripeSubscription.service.js");
 
-// db.User = User;
-// db.Setting = Setting;
-
 class UserService {
-  // static async createUser({
-  //   firstName,
-  //   lastName,
-  //   email,
-  //   password,
-  //   role = "user",
-  // }) {
-  //   const existingUser = await db.User.findOne({ where: { email } });
-  //   if (existingUser) {
-  //     throw new Error("Email is already in use.");
-  //   }
+  static async registerCompanyUser(userData, userId) {
+    const { email, password, displayName, role, status } = userData;
+    const allowedRoles = ["User", "Admin"];
+    if (!password || !email)
+      throw new Error("password or email is not correct");
+    if (role && !allowedRoles.includes(role))
+      throw new Error("selected role is not allowed");
 
-  //   const hashedPassword = await bcrypt.hash(password, 10);
+    const existingCompany = await db.User.findOne({
+      where: { id: userId },
+    });
 
-  //   // Step 1: Create subscription for the user
-  //   const stripeCustomer = await StripeService.createCustomer({
-  //     email,
-  //     firstName,
-  //     lastName,
-  //   });
+    const companyId = existingCompany.companyId;
+    if (!companyId)
+      throw new Error("access denied, no organization for this user");
 
-  //   const user = await db.User.create({
-  //     id: uuidv4(),
-  //     firstName,
-  //     lastName,
-  //     email,
-  //     password: hashedPassword,
-  //     role,
-  //     stripeId: stripeCustomer.id,
-  //   });
+    const existingUser = await UserService.getUserByEmail(email);
+    if (existingUser) throw new Error("User with this email already exists");
 
-  //   // Step 2 Create default settings for the user
-  //   const defaultSettings = {
-  //     userId: user.id,
-  //     businessName: "My Business",
-  //     customerEmail: email,
-  //     replyToEmail: email,
-  //     interfaceLanguage: "en",
-  //     smsSenderNameOrNumber: "quickSign",
-  //     documentSenderName: "quickSign",
-  //     receiveEmailUpdates: "no",
-  //     taxCompliance: false,
-  //     customerCommunicationDetails: "",
-  //     signature: "",
-  //   };
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await db.User.create({
+      id: uuidv4(),
+      companyId,
+      displayName,
+      email,
+      password: hashedPassword,
+      role: role || "User",
+      status,
+    });
 
-  //   await Setting.create(defaultSettings);
+    return user;
+  }
 
-  //   return { id: user.id, name: user.name, email: user.email, role: user.role };
-  // }
+  static async updateCompanyUserInfo(userData) {
+    if (userData.password) {
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      userData.password = hashedPassword;
+    }
+    await db.User.update(userData, { where: { id: userData.userId } });
+    return await db.User.findByPk(userData.userId);
+  }
 
-  static async createUser({
-    firstName,
-    lastName,
-    email,
-    password,
-    role = "User",
-  }) {
+  static async createUser({ firstName, lastName, email, password, role }) {
     // Step 1: Create Stripe customer
     let stripeCustomer;
     try {
@@ -89,6 +71,7 @@ class UserService {
       user = await db.User.create(
         {
           id: uuidv4(),
+          companyId: uuidv4(),
           firstName,
           lastName,
           email,
@@ -170,7 +153,7 @@ class UserService {
     lastName,
     email,
     googleId,
-    role = "user",
+    role = "Super-Admin",
   }) {
     let user = await db.User.findOne({ where: { email } });
     if (user) {
@@ -192,6 +175,7 @@ class UserService {
 
     user = await db.User.create({
       id: uuidv4(),
+      companyId: uuidv4(),
       firstName,
       lastName,
       email,
@@ -220,7 +204,7 @@ class UserService {
     return { id: user.id, email: user.email, role: user.role };
   }
 
-  static async getUsers(page = 1, limit = 6) {
+  static async getUsers({ page = 1, limit = 3, userId }) {
     // Convert to numbers to avoid issues with string inputs
     page = parseInt(page);
     limit = parseInt(limit);
@@ -230,12 +214,17 @@ class UserService {
 
     // Get total user count
     const totalUsers = await db.User.count();
+    const user = await db.User.findByPk(userId);
+    if (!user) throw new Error("user does not exist");
 
     // Fetch users with pagination
     const users = await db.User.findAll({
       limit,
       offset,
       order: [["createdAt", "DESC"]], // Optional: Sort by newest first
+      where: {
+        companyId: user.companyId,
+      },
     });
 
     // Check if there are more results to fetch
@@ -261,7 +250,7 @@ class UserService {
     const user = await db.User.findOne({ where: whereCondition });
 
     if (!user) {
-      throw new Error("User not found")
+      throw new Error("User not found");
     }
 
     return user;

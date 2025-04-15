@@ -37,6 +37,7 @@ const checkDuplicateEmail = require("../middleware/verifySignUp");
  */
 
 const authPublicToken = require("../middleware/verifyPublicToken");
+const { validateCompanyUser } = require("../middleware/validate-system-user");
 
 router.post("/login", UserController.loginUser);
 /**
@@ -49,8 +50,42 @@ router.post(
   UserController.registerUser
 );
 
+router.post("/register-company-user", [
+  checkAuth.verifyToken,
+  UserController.registerCompanyUser,
+]);
+
+router.post(
+  "/update-company-user",
+  validateCompanyUser,
+  checkAuth.verifyToken,
+  UserController.updateCompanyUserInfo
+);
+
+router.delete(
+  "/remove-company-user",
+  checkAuth.verifyToken,
+  UserController.removeCompanyUser
+);
+
+router.get(
+  "/get-users",
+  checkAuth.verifyToken,
+  UserController.getPaginatedUsers
+);
+
+router.get(
+  "/get-userInfo",
+  checkAuth.verifyToken,
+  UserController.getUserByEmailOrId
+);
+
 router.get("/info", checkAuth.verifyToken, UserController.userInfo);
-router.get("/details", checkAuth.verifyToken, UserController.getUserDetailsById);
+router.get(
+  "/details",
+  checkAuth.verifyToken,
+  UserController.getUserDetailsById
+);
 
 /**
  * post type router call to check user email

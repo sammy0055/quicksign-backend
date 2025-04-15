@@ -5,9 +5,9 @@ const jwt = require("jsonwebtoken");
 
 const { OAuth2Client } = require("google-auth-library");
 const e = require("express");
-const client = new OAuth2Client(
-  "226613478719-v6rs7iruo85b5cshtrlup45n4hddfesm.apps.googleusercontent.com"
-); // Replace with your Google Client ID
+const db = require("../models");
+const { v4: uuidv4 } = require("uuid");
+const client = new OAuth2Client(process.env.GOOGLE_AUTH_CLIENT_ID); // Replace with your Google Client ID
 const JWT_SECRET = "your-jwt-secret";
 
 class UserController {
@@ -50,7 +50,7 @@ class UserController {
       lastName,
       email,
       password,
-      role = "Admin",
+      role = "Super-Admin",
       googleIdToken,
     } = req.body;
 
@@ -67,8 +67,7 @@ class UserController {
       if (googleIdToken) {
         const ticket = await client.verifyIdToken({
           idToken: googleIdToken,
-          audience:
-            "226613478719-v6rs7iruo85b5cshtrlup45n4hddfesm.apps.googleusercontent.com", // Must match frontend Client ID
+          audience: process.env.GOOGLE_AUTH_CLIENT_ID, // Must match frontend Client ID
         });
         const payload = ticket.getPayload();
 
@@ -86,16 +85,21 @@ class UserController {
           role,
         });
 
-        const accessToken = jwt.sign(
+        const token = jwt.sign(
           { id: user.id, email: user.email, role: user.role },
           process.env.SECRET || "your-jwt-secret",
           { expiresIn: "1h" }
         );
 
-        return res.status(201).json({
-          message: "User registered successfully.",
-          user,
-          accessToken,
+        const decoded = jwt.decode(token);
+        return res.status(200).json({
+          message: "User logged in successfully.",
+          data: {
+            message: "User logged in successfully.",
+            user,
+            token,
+            expiresAt: decoded.exp,
+          },
         });
       } else {
         if (!password) {
@@ -123,55 +127,71 @@ class UserController {
     }
   }
 
-  // static async loginUser(req, res) {
-  //   const errors = validationResult(req);
-  //   if (!errors.isEmpty()) {
-  //     return res.status(400).json({ errors: errors.array() });
-  //   }
+  static async registerCompanyUser(req, res) {
+    try {
+      const data = await UserService.registerCompanyUser(req.body, req.userId);
+      return res.status(201).json({
+        data,
+      });
+    } catch (error) {
+      return res.status(500).json({ error: { message: error.message } });
+    }
+  }
 
-  //   const { email, password } = req.body;
+  static async updateCompanyUserInfo(req, res) {
+    const userData = req.body;
+    try {
+      const data = await UserService.updateCompanyUserInfo(userData);
+      return res.status(201).json({
+        data,
+      });
+    } catch (error) {
+      res.status(500).json({ error: { message: error.message } });
+    }
+  }
 
-  //   const where = {
-  //     email: email,
-  //     password: password,
-  //   };
-  //   try {
-  //     const user = await UserService.findOne(where);
+  static async removeCompanyUser(req, res) {
+    try {
+      const userId = req.userId;
+      const companyUserId = req.query.companyUserId;
+      const rootUser = await db.User.findByPk(userId);
 
-  //     if (!user) {
-  //       return res
-  //         .status(401)
-  //         .json({ message: "Incorrect email or password." });
-  //     }
+      if (rootUser.role !== "Super-Admin")
+        throw new Error("access denied, only root user can remove account");
 
-  //     const passwordIsValid = await bcrypt.compare(password, user.password);
-  //     if (!passwordIsValid) {
-  //       return res
-  //         .status(401)
-  //         .json({ message: "Incorrect email or password." });
-  //     }
-  //     const token = jwt.sign(
-  //       {
-  //         id: user.id,
-  //         role: user.role,
-  //         email: user.email,
-  //         firstName: user.firstName,
-  //         lastName: user.lastName,
-  //         fullName: user.firstName + " " + user.lastName,
-  //         stripeId: user.stripeId,
-  //       },
-  //       process.env.SECRET
-  //     );
+      const data = await db.User.destroy({ where: { id: companyUserId } });
+      return res.status(201).json({ data, message: "remove successfully" });
+    } catch (error) {
+      res.status(500).json({ error: { message: error.message } });
+    }
+  }
 
-  //     return res.status(200).json({
-  //       message: "User logged in successfully.",
-  //       token,
-  //     });
-  //   } catch (error) {
-  //     console.error("Login error:", error);
-  //     return res.status(401).json({ message: error.message });
-  //   }
-  // }
+  static async getPaginatedUsers(req, res) {
+    const { page, limit } = req.query;
+    try {
+      const users = await UserService.getUsers({
+        page,
+        limit,
+        userId: req.userId,
+      });
+      return res.status(200).json({ data: users });
+    } catch (error) {
+      console.error("Get users error:", error);
+      return res.status(500).json({ message: error.message });
+    }
+  }
+
+  static async getUserByEmailOrId(req, res) {
+    const { email, id } = req.query;
+
+    try {
+      const user = await UserService.getUserByEmailOrId({ email, id });
+      return res.status(200).json({ data: user });
+    } catch (error) {
+      console.error("Get user error:", error);
+      return res.status(500).json({ message: error.message });
+    }
+  }
 
   static async loginUser(req, res) {
     const errors = validationResult(req);
@@ -187,8 +207,7 @@ class UserController {
         // Google login flow
         const ticket = await client.verifyIdToken({
           idToken: googleIdToken,
-          audience:
-            "226613478719-v6rs7iruo85b5cshtrlup45n4hddfesm.apps.googleusercontent.com",
+          audience: process.env.GOOGLE_AUTH_CLIENT_ID,
         });
         const payload = ticket.getPayload();
 
@@ -218,7 +237,7 @@ class UserController {
             .json({ error: "Email and password are required" });
         }
 
-        const user = await UserService.findOne({ where: { email } });
+        user = await UserService.findOne({ where: { email } });
 
         if (!user) {
           return res
@@ -232,28 +251,6 @@ class UserController {
             .status(401)
             .json({ error: "Incorrect email or password." });
         }
-        const token = jwt.sign(
-          {
-            id: user.id,
-            role: user.role,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            fullName: user.firstName + " " + user.lastName,
-            stripeId: user.stripeId,
-          },
-          process.env.SECRET,
-          { expiresIn: "1h" }
-        );
-        const decoded = jwt.decode(token);
-        return res.status(200).json({
-          message: "User logged in successfully.",
-          data: {
-            user,
-            token,
-            expiresAt: decoded.exp,
-          },
-        });
       }
 
       // Generate JWT for both flows
@@ -264,16 +261,20 @@ class UserController {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          fullName: `${user.firstName} ${user.lastName}`,
+          fullName: user.firstName + " " + user.lastName,
           stripeId: user.stripeId,
         },
         process.env.SECRET,
-        { expiresIn: "1h" } // Adjust as needed
+        { expiresIn: "1h" }
       );
-
+      const decoded = jwt.decode(token);
       return res.status(200).json({
         message: "User logged in successfully.",
-        token,
+        data: {
+          user,
+          token,
+          expiresAt: decoded.exp,
+        },
       });
     } catch (error) {
       console.error("Login error:", error);

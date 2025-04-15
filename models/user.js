@@ -47,12 +47,18 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: DataTypes.UUIDV4, // Optional, more random than UUIDV1
         primaryKey: true,
       },
+      companyId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "",
+      },
       /**
        * firstName of the user
        */
       firstName: {
         type: DataTypes.STRING,
         allowNull: false,
+        defaultValue: "",
       },
       /**
        * lastName of the user
@@ -60,6 +66,12 @@ module.exports = (sequelize, DataTypes) => {
       lastName: {
         type: DataTypes.STRING,
         allowNull: false,
+        defaultValue: "",
+      },
+      displayName: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "",
       },
       /**
        * email of the user
@@ -82,7 +94,7 @@ module.exports = (sequelize, DataTypes) => {
        */
       role: {
         type: DataTypes.ENUM,
-        values: ["User", "Admin", "Super Admin"],
+        values: ["User", "Admin", "Super-Admin"],
         allowNull: false,
         defaultValue: "User",
       },
@@ -127,4 +139,3 @@ module.exports = (sequelize, DataTypes) => {
 
   return User;
 };
-
