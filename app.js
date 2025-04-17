@@ -76,6 +76,7 @@ const BillingRoutes = require("./routes/billing.routes");
 const NotificationRoutes = require("./routes/notification.routes");
 const UserService = require("./services/user.service");
 const userDemoPdfTemplateRoute = require("./routes/demo-template.route")
+const fileAndFolder = require("./routes/fileAndFolder.routes")
 
 app.use("/systemUser", SystemUser);
 app.use("/users", UserRoutes);
@@ -88,6 +89,7 @@ app.use("/stripe", StripeRoutes);
 app.use("/billing", BillingRoutes);
 app.use("/notification", NotificationRoutes);
 app.use("/demotemplate", userDemoPdfTemplateRoute)
+app.use("/file-and-folder", fileAndFolder)
 
 app.get("/test", async (req, res) => {
   await UserService.testDB();

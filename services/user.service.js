@@ -71,7 +71,6 @@ class UserService {
       user = await db.User.create(
         {
           id: uuidv4(),
-          companyId: uuidv4(),
           firstName,
           lastName,
           email,
@@ -80,6 +79,19 @@ class UserService {
           stripeId: stripeCustomer.id,
         },
         { transaction }
+      );
+
+      const comapny = await db.Company.create(
+        {
+          id: uuidv4(),
+          rootUser: user.id,
+        },
+        { transaction }
+      );
+
+      await db.User.update(
+        { companyId: comapny.id },
+        { where: { id: user.id }, transaction }
       );
 
       const defaultSettings = {
@@ -175,7 +187,6 @@ class UserService {
 
     user = await db.User.create({
       id: uuidv4(),
-      companyId: uuidv4(),
       firstName,
       lastName,
       email,
@@ -184,6 +195,13 @@ class UserService {
       role,
       stripeId: stripeCustomer.id,
     });
+
+    const comapny = await db.Company.create({
+      id: uuidv4(),
+      rootUser: user.id,
+    });
+
+    await db.User.update({ companyId: comapny.id }, { where: { id: user.id } });
 
     const defaultSettings = {
       userId: user.id,
@@ -216,7 +234,7 @@ class UserService {
     const totalUsers = await db.User.count({
       where: { companyId: user.companyId },
     });
-   
+
     if (!user) throw new Error("user does not exist");
 
     // Fetch users with pagination

@@ -12,6 +12,7 @@
   "author": "mubi",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
     "axios": "^0.25.0",
     "bcryptjs": "^2.4.3",
     "biguint-format": "^1.0.1",
@@ -43,8 +44,8 @@
     "node-xlsx": "^0.21.0",
     "nodemailer": "^6.10.0",
     "nodemon": "^2.0.15",
-    "pg": "8",
     "pdfjs-dist": "^2.15.349",
+    "pg": "8",
     "qr-image": "^3.2.0",
     "request-promise": "^4.2.6",
     "sequelize": "^6.37.5",
