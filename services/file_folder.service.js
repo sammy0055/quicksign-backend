@@ -1,10 +1,22 @@
 const db = require("../models");
-
+const {
+  addTemplateFile,
+  downloadPdfFileWithPath,
+} = require("../helpers/manage-fileAndfolder");
 class FileAndFolderService {
   static async addPdfFile(data, companyId) {
     if (!companyId) throw new Error("companyId is required");
     data.companyId = companyId;
-    const file = await db.File.create(data);
+    const { path, id } = await addTemplateFile({
+      file: data.file,
+      name: data.name,
+    });
+    const newData = {
+      ...data,
+      id,
+      path,
+    };
+    const file = await db.File.create(newData);
     const folder = await db.Folder.findByPk(data.folderId);
     await db.Folder.update(
       { children: [...folder.children, file.id] },
@@ -53,6 +65,12 @@ class FileAndFolderService {
       })
     );
     return populatedFolders;
+  }
+
+  static async downloadPdfFile(fileId) {
+    const file = await db.File.findByPk(fileId);
+    if (!file) throw new Error("file does not exist");
+    return await downloadPdfFileWithPath(file.path);
   }
 }
 

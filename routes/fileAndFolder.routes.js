@@ -5,7 +5,11 @@ const {
   validateFileFields,
   validateFolderFields,
 } = require("../middleware/fileAndFolder-validation");
+const multer = require("multer");
 const router = express.Router();
+
+const storage = multer.memoryStorage(); // or diskStorage if you want to save the file
+const upload = multer({ storage });
 
 router.post(
   "/createDirectory",
@@ -13,11 +17,18 @@ router.post(
   validateFolderFields,
   FileAndFolderController.addPdfFolder
 );
-router.post(
+router.put(
   "/createFile",
   checkAuth.verifyToken,
-  validateFileFields,
+  // validateFileFields,
+  upload.single("file"),
   FileAndFolderController.addPdfFile
+);
+
+router.put(
+  "/testUpload",
+  upload.single("file"),
+  FileAndFolderController.testUpload
 );
 
 router.delete(
@@ -35,6 +46,12 @@ router.get(
   "/getFilesAndFolders",
   checkAuth.verifyToken,
   FileAndFolderController.getFileAndFolder
+);
+
+router.get(
+  "/downloadPdfFile",
+  checkAuth.verifyToken,
+  FileAndFolderController.downloadPdfFile
 );
 
 module.exports = router;

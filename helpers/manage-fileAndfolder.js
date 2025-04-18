@@ -1,11 +1,41 @@
 require("dotenv").config();
-import { createClient } from "@supabase/supabase-js";
-
+const { createClient } = require("@supabase/supabase-js");
+const { v4: uuidv4 } = require("uuid");
 // Create a single supabase client for interacting with your database
 const SUPERBASE_URL = process.env.SUPERBASE_URL;
 const SUPERBASE_STORAGE_KEY = process.env.SUPERBASE_STORAGE_KEY;
+const bucketName = process.env.SUPERBASE_STORAGE_BUCKET_NAME;
+const TEMPLATE_FOLDER = "pdf_template";
 const supabase = createClient(`${SUPERBASE_URL}`, `${SUPERBASE_STORAGE_KEY}`);
 
-const addFile = (data) => {};
+const addTemplateFile = async ({ file }) => {
+  //dis is the template folder on superbase
+  const { data, error } = await supabase.storage
+    .from(`${bucketName}`)
+    .upload(`${TEMPLATE_FOLDER}/${uuidv4()}.pdf`, file.buffer, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.mimetype,
+    });
 
-module.exports = { addFile };
+  if (error) {
+    console.log("error", error);
+    throw error;
+  }
+
+  return data;
+};
+
+const downloadPdfFileWithPath = async (path) => {
+  const { data, error } = await supabase.storage
+    .from(`${bucketName}`)
+    .download(`${path}`);
+
+  if (error) {
+    console.log("error", error);
+    throw error;
+  }
+  return data;
+};
+
+module.exports = { addTemplateFile, downloadPdfFileWithPath };

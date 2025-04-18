@@ -9,9 +9,8 @@ const folderSchema = z.object({
 
 const fileSchema = z.object({
   name: z.string().nonempty("name is required"),
-  path: z.string().nonempty("filePath is required"),
+  file: z.any().optional(),
   folderId: z.string().nonempty("folderId is required"),
-  expanded: z.boolean().optional(),
   type: z.string().optional(),
   content: z.string().optional(),
 });
