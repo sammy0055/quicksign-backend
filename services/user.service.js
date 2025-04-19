@@ -173,7 +173,7 @@ class UserService {
         user.googleId = googleId;
         await user.save();
       }
-      return { id: user.id, email: user.email, role: user.role };
+      return user;
     }
 
     const stripeCustomer = await StripeService.createCustomer({
@@ -219,7 +219,7 @@ class UserService {
 
     await db.Setting.create(defaultSettings);
 
-    return { id: user.id, email: user.email, role: user.role };
+    return await db.User.findByPk(user.id);
   }
 
   static async getUsers({ page = 1, limit = 3, userId }) {
