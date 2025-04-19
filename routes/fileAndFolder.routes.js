@@ -36,6 +36,7 @@ router.delete(
   checkAuth.verifyToken,
   FileAndFolderController.removePdfFolder
 );
+
 router.delete(
   "/removeFile",
   checkAuth.verifyToken,

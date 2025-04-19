@@ -1,7 +1,9 @@
 const db = require("../models");
+const { Op } = require("sequelize");
 const {
   addTemplateFile,
   downloadPdfFileWithPath,
+  deletePdfTemplates,
 } = require("../helpers/manage-fileAndfolder");
 class FileAndFolderService {
   static async addPdfFile(data, companyId) {
@@ -33,8 +35,30 @@ class FileAndFolderService {
   }
 
   static async removeFolder(id) {
-    if (!id) throw new Error("folder not specified");
-    await db.Folder.destroy({ where: { id } });
+    try {
+      if (!id) throw new Error("folder not specified");
+      const folder = await db.Folder.findByPk(id);
+      const transaction = await db.sequelize.transaction();
+      const files = folder?.children;
+      if (files?.length !== 0) {
+        const paths = files.map((file) => file.path);
+        await deletePdfTemplates(paths);
+        await db.File.destroy(
+          {
+            where: {
+              id: {
+                [Op.in]: files,
+              },
+            },
+          },
+          { transaction }
+        );
+      }
+      await db.Folder.destroy({ where: { id } }, { transaction });
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   }
 
   static async removeFile(id) {
@@ -44,6 +68,7 @@ class FileAndFolderService {
       const file = await db.File.findByPk(id);
       const folder = await db.Folder.findByPk(file.folderId);
       const newChildren = folder.children.filter((item) => item.id !== id);
+      await deletePdfTemplates([file.path]);
       await folder.update({ children: newChildren }, { transaction });
       await file.destroy({ where: { id } }, { transaction });
       await transaction.commit();

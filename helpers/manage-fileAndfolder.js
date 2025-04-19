@@ -19,7 +19,6 @@ const addTemplateFile = async ({ file }) => {
     });
 
   if (error) {
-    console.log("error", error);
     throw error;
   }
 
@@ -32,10 +31,20 @@ const downloadPdfFileWithPath = async (path) => {
     .download(`${path}`);
 
   if (error) {
-    console.log("error", error);
     throw error;
   }
   return data;
 };
 
-module.exports = { addTemplateFile, downloadPdfFileWithPath };
+const deletePdfTemplates = async (pathArray) => {
+  const { data, error } = await supabase.storage
+    .from(`${bucketName}`)
+    .remove(pathArray);
+
+  if (error) {
+    throw error;
+  }
+  return data;
+};
+
+module.exports = { addTemplateFile, downloadPdfFileWithPath, deletePdfTemplates };

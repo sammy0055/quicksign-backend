@@ -4,7 +4,6 @@ const FileAndFolderService = require("../services/file_folder.service");
 
 require("dotenv").config();
 
-const SUPERBASE_STORAGE_BUCKET_NAME = process.env.SUPERBASE_STORAGE_BUCKET_NAME;
 class FileAndFolderController {
   static async addPdfFile(req, res) {
     try {
@@ -59,12 +58,23 @@ class FileAndFolderController {
   }
   static async removePdfFile(req, res) {
     try {
-      const folderId = req.query.fileId;
-      await FileAndFolderService.removeFile(folderId);
+      const fileId = req.query.fileId;
+      if (!fileId) throw new Error("fileId is required");
+      await FileAndFolderService.removeFile(fileId);
       res.status(200).json({
         message: "file removed successfully",
         data: { message: "file removed successfully" },
       });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+
+  static async removeFolder(req, res) {
+   
+    try {
+      const fileId = req.query.fileId;  
+      
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
