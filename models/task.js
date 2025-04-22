@@ -40,6 +40,14 @@ module.exports = (sequelize, DataTypes) => {
       additionalNote: {
         type: DataTypes.STRING,
       },
+      additionalContactList: {
+        type: DataTypes.ARRAY(DataTypes.STRING),
+      },
+      companyId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+
       fileUrl: {
         type: DataTypes.STRING,
         allowNull: false, // URL of the uploaded PDF file
@@ -63,4 +71,3 @@ module.exports = (sequelize, DataTypes) => {
   );
   return Task;
 };
-

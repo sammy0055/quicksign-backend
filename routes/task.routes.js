@@ -6,10 +6,15 @@ const authPublicToken = require("../middleware/verifyPublicToken");
 const upload = require("../helpers/fileUpload");
 const assignAdminUserId = require("../middleware/assignAdminUserId");
 
+const multer = require("multer");
+
 // Middleware to handle async errors
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
+
+const storage = multer.memoryStorage(); // or diskStorage if you want to save the file
+const uploadEditableFile = multer({ storage });
 
 // Fixed routes without .bind() since controllers are functions
 router.post(
@@ -41,7 +46,7 @@ router.post(
   [
     checkAuth.verifyToken,
     checkAuth.verifyUserRole(["Admin"]),
-    upload.single("taskPdf"),
+    uploadEditableFile.single("taskPdf"),
   ],
   asyncHandler(taskController.createTask)
 );
@@ -78,8 +83,15 @@ router.post(
 router.post(
   "/submit",
   assignAdminUserId,
-  upload.single("editedPdf"),
+  uploadEditableFile.single("editedPdf"),
   taskController.submitTask
+);
+
+router.get(
+  "/downloadTaskFile",
+  checkAuth.verifyToken,
+  checkAuth.verifyUserRole(["Admin"]),
+  taskController.downloadTaskPdfFile
 );
 
 module.exports = router;

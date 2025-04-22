@@ -26,6 +26,9 @@ verifyUserRole = (params) => {
         });
       }
       req.userId = decoded.id;
+      if (decoded.role === "Super-Admin") {
+        return next();
+      }
       if (params.length > 0 && !params.find((item) => item == decoded.role)) {
         return res.status(401).send({
           auth: false,

@@ -14,6 +14,13 @@ require("structured-clone-polyfill");
 const submissionService = require("../services/submission.service");
 const whatsappUtilInstance = require("../utils/whatsAppUtil");
 const UserService = require("../services/user.service");
+const db = require("../models");
+const {
+  addEditedPdfFile,
+  downloadPdfFileWithPath,
+  replaceEditedPdf,
+} = require("../helpers/manage-fileAndfolder");
+const { v4: uuidv4 } = require("uuid");
 
 exports.getAllTasks = async (req, res) => {
   try {
@@ -45,26 +52,17 @@ exports.getTaskById = async (req, res) => {
   }
 };
 
-exports.getTaskPdf = (req, res) => {
+exports.getTaskPdf = async (req, res) => {
   try {
-    if (!req.query.filePath) {
+    const fileUrl = req.query.filePath;
+    if (!fileUrl) {
       return res.status(400).json({ error: "filePath is required" });
     }
-    const filePath = decodeURIComponent(req.query.filePath);
-    const fullPath = path.join(__dirname, "../", filePath);
-
-    if (!fs.existsSync(fullPath)) {
-      return res.status(404).json({ error: "File not found" });
-    }
-
+    const data = await downloadPdfFileWithPath(fileUrl);
+    // 2. Convert Blob to Buffer
+    const buffer = Buffer.from(await data.arrayBuffer());
     res.setHeader("Content-Type", "application/pdf");
-    fs.readFile(fullPath, (err, data) => {
-      if (err) {
-        console.error("Read error:", err);
-        return res.status(500).json({ error: "Failed to read file" });
-      }
-      res.send(data);
-    });
+    res.send(buffer);
   } catch (error) {
     console.error("Error in getTaskPdf:", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -108,206 +106,34 @@ exports.getAllSavedPdfInfo = async (req, res) => {
   }
 };
 
-// exports.createTask = async (req, res) => {
-//   try {
-//     const data = JSON.parse(req.body.data);
-
-//     // Validate client or group selection
-//     if (
-//       (!data.clientList || data.clientList.length === 0) &&
-//       (!data.groupList || data.groupList.length === 0)
-//     ) {
-//       return res.status(400).json({
-//         error:
-//           "Please choose at least one client or group to send the task to.",
-//       });
-//     }
-
-//     // File handling
-//     const fileUrl = path
-//       .join(
-//         "uploads",
-//         req.userId.toString(),
-//         "taskPdfs",
-//         path.basename(req.file.path)
-//       )
-//       .replace(/\\/g, "/");
-//     const filePath = path.join(__dirname, "../", fileUrl);
-//     const fileDir = path.dirname(filePath);
-//     const thumbsDir = path.join(fileDir, "thumbs");
-
-//     // Map data for task creation
-//     const mappedData = {
-//       documentName: data.documentName,
-//       additionalNote: data.additionalNote,
-//       channel: data.sendingChannel,
-//       userId: data.id || req.userId,
-//       fileUrl,
-//       clientIds: Array.isArray(data.clientList)
-//         ? data.clientList.map((c) => c.id)
-//         : [],
-//       groupIds: Array.isArray(data.groupList)
-//         ? data.groupList.map((g) => g.id)
-//         : [],
-//       confirmationEmail: data.confirmationEmail,
-//       signatureRoutine: data.sequentialRoutine
-//         ? "sequential"
-//         : data.parallelRoutine
-//         ? "parallel"
-//         : undefined,
-//     };
-
-//     const task = await taskService.createTask(mappedData);
-
-//     // Collect all clients
-//     let allClients = [];
-//     data.clientList.forEach((client) => allClients.push(client));
-//     for (const group of data.groupList) {
-//       const groupClients = await groupService.getClientsFromGroup(group.id);
-//       allClients.push(...groupClients);
-//     }
-
-//     // Deduplicate by client.id
-//     const uniqueClientsMap = {};
-//     allClients.forEach((client) => {
-//       if (client.id) uniqueClientsMap[client.id] = client;
-//     });
-//     const uniqueClients = Object.values(uniqueClientsMap);
-
-//     // Send notifications based on channel
-//     if (data.sendingChannel === "email") {
-//       for (const client of uniqueClients) {
-//         if (client.email) {
-//           const token = generateTaskToken({
-//             taskId: task.id,
-//             email: client.email,
-//             clientId: client.id,
-//           });
-//           const url = `${process.env.ANGULARURL}/document-sign?token=${token}`;
-//           const templateData = {
-//             clientName: client.name || client.email.split("@")[0],
-//             documentName: data.documentName,
-//             additionalNote: data.additionalNote,
-//             url,
-//           };
-//           const htmlContent = await renderTemplate(
-//             "task-email.html",
-//             templateData
-//           );
-//           await sendMail(
-//             client.email,
-//             `New Task Assigned: ${task.documentName}`,
-//             htmlContent
-//           );
-//           await notificationService.createNotification({
-//             userId: req.userId,
-//             type: "documentSent",
-//             message: `Document sent to ${
-//               client.name || client.email.split("@")[0]
-//             } via email`,
-//             taskId: task.id,
-//             clientName: client.name || client.email.split("@")[0],
-//           });
-//         } else {
-//         }
-//       }
-//     } else if (data.sendingChannel === "sms") {
-//       for (const client of uniqueClients) {
-//         if (client.phone) {
-//           const token = generateTaskToken({
-//             taskId: task.id,
-//             clientId: client.id,
-//           });
-//           const signUrl = `${process.env.ANGULARURL}/document-sign?token=${token}`;
-//           const recipient = {
-//             phone: client.phone,
-//             name: client.name || "there",
-//           };
-//           const document = {
-//             name: data.documentName,
-//             note: data.additionalNote,
-//           };
-
-//           await whatsappUtilInstance.sendDocumentSignRequest(
-//             recipient,
-//             document,
-//             signUrl
-//           );
-//           await notificationService.createNotification({
-//             userId: req.userId,
-//             type: "documentSent",
-//             message: `Document sent to ${client.name || client.phone} via SMS`,
-//             taskId: task.id,
-//             clientName: client.name || client.phone,
-//           });
-//         } else {
-//         }
-//       }
-//     }
-
-//     // Handle thumbnails for reusable tasks
-//     if (data.isReusable) {
-//       try {
-//         const thumbName = `${path.parse(filePath).name}.jpg`;
-//         const thumbPath = path.join(thumbsDir, thumbName);
-//         await fsp.mkdir(thumbsDir, { recursive: true });
-//         await generatePdfThumbnail(filePath, thumbPath);
-//       } catch (error) {
-//         console.error("Thumbnail generation failed:", error);
-//       }
-//     }
-
-//     // Delete file if not reusable
-//     if (!data.isReusable) {
-//       await fsp
-//         .unlink(req.file.path)
-//         .catch((err) => console.error("Error deleting file:", err));
-//     }
-
-//     res
-//       .status(201)
-//       .json({ message: "Task created and notifications sent!", data: task });
-//   } catch (error) {
-//     console.error("Error in createTask:", error);
-//     if (
-//       error ===
-//       "Document limit reached. Please upgrade your plan to create more tasks."
-//     ) {
-//       return res.status(403).json({ message: error });
-//     }
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
 exports.createTask = async (req, res) => {
   try {
     const data = JSON.parse(req.body.data);
-
+    const isClientListEmpty = data?.clientList.length === 0;
+    const isGroupListEmpty = data?.groupList.length === 0;
+    const isAdditionalListEmpty = data?.additionalContactList.length === 0;
     // Validate client or group selection
-    if (
-      (!data.clientList || data.clientList.length === 0) &&
-      (!data.groupList || data.groupList.length === 0)
-    ) {
-      return res.status(400).json({
-        error:
-          "Please choose at least one client or group to send the task to.",
-      });
+
+    if (isClientListEmpty && isAdditionalListEmpty && isGroupListEmpty) {
+      throw new Error(
+        "Please choose at least one client or group to send the task to."
+      );
     }
 
-    // File handling
-    const isReusable = data.isReusable || false;
-    const folder = isReusable ? "taskPdfs" : "tempTaskPdfs";
-    const fileUrl = path
-      .join(
-        "uploads",
-        req.userId.toString(),
-        folder,
-        path.basename(req.file.path)
-      )
-      .replace(/\\/g, "/");
-    const filePath = path.join(__dirname, "../", fileUrl);
-    const fileDir = path.dirname(filePath);
-    const thumbsDir = path.join(fileDir, "thumbs");
+    const user = await UserService.findOne({
+      where: { id: req.userId },
+    });
+
+    if (!user) throw new Error("user is not valid");
+    const comapny = await db.Company.findByPk(user.companyId);
+    if (!comapny) throw new Error("no organization for this user");
+    // Check documentLimit before creating the task
+    if (comapny.documentLimit === 0)
+      throw new Error(
+        "Document limit reached. Please upgrade your plan to create more tasks."
+      );
+
+    const { path } = await addEditedPdfFile(req.file);
 
     // Map data for task creation
     const mappedData = {
@@ -315,12 +141,12 @@ exports.createTask = async (req, res) => {
       additionalNote: data.additionalNote,
       channel: data.sendingChannel,
       userId: data.id || req.userId,
-      fileUrl,
-      isSaved: isReusable ? true : false, // Add isReusable to the task data
-      clientIds: Array.isArray(data.clientList)
+      fileUrl: path,
+      isSaved: false, // Add isReusable to the task data
+      clientIds: Array.isArray(data?.clientList)
         ? data.clientList.map((c) => c.id)
         : [],
-      groupIds: Array.isArray(data.groupList)
+      groupIds: Array.isArray(data?.groupList)
         ? data.groupList.map((g) => g.id)
         : [],
       confirmationEmail: data.confirmationEmail,
@@ -329,28 +155,16 @@ exports.createTask = async (req, res) => {
         : data.parallelRoutine
         ? "parallel"
         : undefined,
+      additionalContactList: data?.additionalContactList,
+      companyId: user.companyId,
     };
-
-    // Check documentLimit before creating the task
-    const user = await UserService.findOne({
-      where: { id: mappedData.userId },
-    });
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-    if (user.documentLimit === 0) {
-      return res.status(403).json({
-        message:
-          "Document limit reached. Please upgrade your plan to create more tasks.",
-      });
-    }
 
     const task = await taskService.createTask(mappedData);
 
     // Collect all clients
     let allClients = [];
     data.clientList.forEach((client) => allClients.push(client));
-    for (const group of data.groupList) {
+    for (const group of data?.groupList) {
       const groupClients = await groupService.getClientsFromGroup(group.id);
       allClients.push(...groupClients);
     }
@@ -361,6 +175,43 @@ exports.createTask = async (req, res) => {
       if (client.id) uniqueClientsMap[client.id] = client;
     });
     const uniqueClients = Object.values(uniqueClientsMap);
+
+    // add additional contacts if any --------------------------------
+    const additionalContactList = data?.additionalContactList;
+    const newArray = [];
+    if (additionalContactList.length) {
+      if (data.sendingChannel === "email") {
+        const emails = additionalContactList.filter((item) =>
+          /\S+@\S+\.\S+/.test(item)
+        );
+        for (const email of emails) {
+          if (uniqueClients?.length) {
+            uniqueClients.push({ email: email, id: uuidv4() });
+          } else {
+            newArray.push({ email: email, id: uuidv4() });
+          }
+        }
+        if (!uniqueClients?.length) {
+          uniqueClients.push(...newArray);
+        }
+      }
+
+      if (data.sendingChannel === "sms") {
+        const phoneNumbers = additionalContactList.filter((item) =>
+          /^[+]?[\d]{7,15}$/.test(item)
+        );
+        for (const phone of phoneNumbers) {
+          if (uniqueClients?.length) {
+            uniqueClients.push({ phone: phone, id: uuidv4() });
+          } else {
+            newArray.push({ phone: phone, id: uuidv4() });
+          }
+        }
+        if (uniqueClients?.length === 0) {
+          uniqueClients.push(...newArray);
+        }
+      }
+    }
 
     // Send notifications based on channel --------------------------
     if (data.sendingChannel === "email") {
@@ -396,10 +247,11 @@ exports.createTask = async (req, res) => {
             taskId: task.id,
             clientName: client.name || client.email.split("@")[0],
           });
-        } else {
         }
       }
-    } else if (data.sendingChannel === "sms") {
+    }
+
+    if (data.sendingChannel === "sms") {
       for (const client of uniqueClients) {
         if (client.phone) {
           const token = generateTaskToken({
@@ -427,27 +279,9 @@ exports.createTask = async (req, res) => {
             taskId: task.id,
             clientName: client.name || client.phone,
           });
-        } else {
         }
       }
     }
-
-    // Handle thumbnails for reusable tasks
-    if (data.isReusable) {
-      try {
-        const thumbName = `${path.parse(filePath).name}.jpg`;
-        const thumbPath = path.join(thumbsDir, thumbName);
-        await fsp.mkdir(thumbsDir, { recursive: true });
-        await generatePdfThumbnail(filePath, thumbPath);
-      } catch (error) {
-        console.error("Thumbnail generation failed:", error);
-      }
-    }
-
-    // Removed immediate deletion for non-reusable tasks
-    // if (!data.isReusable) {
-    //   await fsp.unlink(req.file.path).catch((err) => console.error("Error deleting file:", err));
-    // }
 
     res
       .status(201)
@@ -455,6 +289,21 @@ exports.createTask = async (req, res) => {
   } catch (error) {
     console.error("Error in createTask:", error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+exports.downloadTaskPdfFile = async (req, res) => {
+  try {
+    const path = req.query.fileUrl;
+    const data = await downloadPdfFileWithPath(path);
+    const buffer = Buffer.from(await data.arrayBuffer());
+
+    // 3. Set headers for PDF download
+    res.setHeader("Content-Type", "application/pdf");
+    // res.setHeader("Content-Disposition", "attachment; filename=myfile.pdf");
+    res.end(buffer);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -551,12 +400,13 @@ exports.submitTask = async (req, res) => {
     }
 
     // Ensure the edited PDF file is provided by Multer
-    if (!req.file) {
+    const editedFile = req.file;
+    if (!editedFile) {
       return res.status(400).json({ error: "Edited PDF file is required." });
     }
 
     // Normalize file path
-    const filePath = req.file.path.replace(/\\/g, "/");
+    // const filePath = req.file.path.replace(/\\/g, "/");
 
     // Check if this client has already submitted for this task
     const existingSubmission =
@@ -568,10 +418,13 @@ exports.submitTask = async (req, res) => {
     }
 
     // Create a new submission record for this client
+    const task = await db.Task.findByPk(taskId);
+    if (!task) throw new Error("task does not exist");
+    const { path } = await replaceEditedPdf(task.fileUrl, editedFile);
     await submissionService.createSubmission({
       taskId,
       clientId,
-      fileUrl: filePath,
+      fileUrl: path,
       submittedAt: new Date(),
     });
 

@@ -5,10 +5,11 @@ module.exports = (sequelize, DataTypes) => {
   class Submission extends Model {
     static associate(models) {
       Submission.belongsTo(models.Task, { foreignKey: "taskId", as: "task" });
-      Submission.belongsTo(models.Client, {
-        foreignKey: "clientId",
-        as: "client",
-      });
+      // Submission.belongsTo(models.Client, {
+      //   foreignKey: "clientId",
+      //   as: "client",
+      //   constraints: false, // ⛔ disables foreign key constraint
+      // });
     }
   }
 
@@ -24,7 +25,7 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
       },
       clientId: {
-        type: DataTypes.UUID,
+        type: DataTypes.STRING,
         allowNull: false,
       },
       fileUrl: {
@@ -40,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
     {
       sequelize,
       modelName: "Submission",
-      tableName: "submissions",
+      // tableName: "submissions",
       timestamps: false,
     }
   );

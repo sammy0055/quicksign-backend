@@ -6,6 +6,7 @@ const SUPERBASE_URL = process.env.SUPERBASE_URL;
 const SUPERBASE_STORAGE_KEY = process.env.SUPERBASE_STORAGE_KEY;
 const bucketName = process.env.SUPERBASE_STORAGE_BUCKET_NAME;
 const TEMPLATE_FOLDER = "pdf_template";
+const EDITEDPDF_FOLDER = "pdf_files_to_sign";
 const supabase = createClient(`${SUPERBASE_URL}`, `${SUPERBASE_STORAGE_KEY}`);
 
 const addTemplateFile = async ({ file }) => {
@@ -13,6 +14,22 @@ const addTemplateFile = async ({ file }) => {
   const { data, error } = await supabase.storage
     .from(`${bucketName}`)
     .upload(`${TEMPLATE_FOLDER}/${uuidv4()}.pdf`, file.buffer, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.mimetype,
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+const addEditedPdfFile = async (file) => {
+  const { data, error } = await supabase.storage
+    .from(`${bucketName}`)
+    .upload(`${EDITEDPDF_FOLDER}/${uuidv4()}.pdf`, file.buffer, {
       cacheControl: "3600",
       upsert: false,
       contentType: file.mimetype,
@@ -47,4 +64,26 @@ const deletePdfTemplates = async (pathArray) => {
   return data;
 };
 
-module.exports = { addTemplateFile, downloadPdfFileWithPath, deletePdfTemplates };
+const replaceEditedPdf = async (path, file) => {
+  const { data, error } = await supabase.storage
+    .from(`${bucketName}`)
+    .update(`${path}`, file.buffer, {
+      cacheControl: "3600",
+      upsert: true,
+      contentType: file.mimetype,
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+module.exports = {
+  addTemplateFile,
+  addEditedPdfFile,
+  downloadPdfFileWithPath,
+  deletePdfTemplates,
+  replaceEditedPdf,
+};

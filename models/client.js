@@ -10,7 +10,7 @@ module.exports = (sequelize, DataTypes) => {
       Client.belongsToMany(models.Group, {
         through: "GroupClient",
       });
-      Client.hasMany(models.Submission, { foreignKey: "clientId" });
+      // Client.hasMany(models.Submission, { foreignKey: "clientId" });
       Client.belongsTo(models.User, { foreignKey: "userId" });
     }
   }

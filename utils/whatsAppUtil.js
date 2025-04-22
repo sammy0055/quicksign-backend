@@ -1,6 +1,7 @@
 // helpers/whatsAppUtil.js
 require("dotenv").config();
 const twilio = require("twilio");
+const { sendWhatSappMessage } = require("../helpers/whatsapp-messager");
 
 /**
  * WhatsApp messaging utility that provides functions to send different types of WhatsApp messages
@@ -76,7 +77,8 @@ class whatsAppUtil {
 
     const message = `Hello ${name},\n\nYou have been assigned a new document "${document.name}" to sign.${note}\n\nPlease click on the following link to view and sign the document: ${signUrl}`;
 
-    return await this.sendTextMessage(recipient.phone, message);
+    // return await this.sendTextMessage(recipient.phone, message);
+    return await sendWhatSappMessage(recipient.phone, message)
   }
 
   /**

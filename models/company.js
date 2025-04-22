@@ -20,6 +20,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
+      documentLimit: {
+        type: DataTypes.INTEGER,
+        default: 5,
+      },
     },
     {
       sequelize,
