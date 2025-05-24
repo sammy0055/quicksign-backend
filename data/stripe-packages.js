@@ -1,0 +1,32 @@
+module.exports.stripe_package_plans = [
+  {
+    id: "basic",
+    default_price: "price_1RPtyAIoLw7QSodUTX6omGkL",
+    name: "Basic Plan",
+    monthlyPrice: 9.99,
+    yearlyPrice: 99.99,
+    discount: 15,
+    imgUrl: "/assets/images/pricing_1.png",
+    features: ["5 Projects", "Basic Analytics", "500MB Storage"],
+  },
+  {
+    id: "pro",
+    default_price: "price_1RPu0OIoLw7QSodUETHKBxqy",
+    name: "Professional",
+    monthlyPrice: 19.99,
+    yearlyPrice: 199.99,
+    discount: 15,
+    imgUrl: "/assets/images/price-tag_18313647.png",
+    features: ["Unlimited Projects", "Advanced Analytics", "5GB Storage"],
+  },
+  {
+    id: "enterprise",
+    default_price: "price_1RPu1SIoLw7QSodUaKWb6Suc",
+    name: "Enterprise",
+    monthlyPrice: 49.99,
+    yearlyPrice: 499.99,
+    discount: 15,
+    imgUrl: "/assets/images/pricing_3.png",
+    features: ["Unlimited Projects", "Advanced Analytics", "20GB Storage"],
+  },
+];

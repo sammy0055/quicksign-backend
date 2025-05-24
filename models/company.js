@@ -22,7 +22,11 @@ module.exports = (sequelize, DataTypes) => {
       },
       documentLimit: {
         type: DataTypes.INTEGER,
-        default: 5,
+        default: 7,
+      },
+      isDocumentLimited: {
+        type: DataTypes.BOOLEAN,
+        default: true,
       },
     },
     {

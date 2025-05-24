@@ -20,11 +20,7 @@ const companyUserSignupSchema = z.object({
       errorMap: () => ({ message: "role is required" }),
     })
     .optional(),
-  status: z
-    .enum(["active", "inactive", "freezed"], {
-      errorMap: () => ({ message: "Status is required" }),
-    })
-    .optional(),
+  status: z.string().nonempty("status is required").optional(),
 });
 
 const validateCompanyUser = (req, res, next) => {

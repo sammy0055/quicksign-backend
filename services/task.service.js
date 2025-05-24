@@ -82,11 +82,14 @@ exports.getTaskById = async (id) => {
  */
 exports.createTask = async (data) => {
   // Create the task record
+  console.log("====================================");
+  console.log("data", data);
+  console.log("====================================");
   const task = await Task.create(data);
 
   // If associated client IDs are provided, set the associations
   if (data.clientIds && data.clientIds.length > 0) {
-    await task.setClients(data.clientIds);
+    // await task.setClients(data.clientIds);
   }
 
   // If associated group IDs are provided, set the associations

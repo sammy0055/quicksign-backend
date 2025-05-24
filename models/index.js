@@ -31,7 +31,6 @@ const StripeSubscription = require("./stripeSubscription")(
   sequelize,
   DataTypes
 );
-const Subscription = require("./subscription")(sequelize, DataTypes);
 const Task = require("./task")(sequelize, DataTypes);
 const TaskClient = require("./taskClient")(sequelize, DataTypes);
 const TaskGroup = require("./taskGroup")(sequelize, DataTypes);
@@ -51,7 +50,6 @@ User.associate({
   Task,
   Setting,
   StripeSubscription,
-  Subscription,
   Billing,
   Notification,
 });
@@ -63,7 +61,6 @@ Billing.associate({ User });
 Setting.associate({ User });
 StripeSubscription.associate({ User });
 Submission.associate({ Task, Client });
-Subscription.associate({ User });
 Task.associate({ User, Client, Group, Notification, Submission });
 GroupClient.associate({});
 TaskGroup.associate({});
@@ -78,7 +75,6 @@ const db = {
   Client,
   Group,
   StripeSubscription,
-  Subscription,
   stripeProduct,
   Task,
   TaskClient,

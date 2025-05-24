@@ -49,14 +49,13 @@ class UserService {
     return await db.User.findByPk(userData.userId);
   }
 
-  static async createUser({ firstName, lastName, email, password, role }) {
+  static async createUser({ displayName, email, password, role }) {
     // Step 1: Create Stripe customer
     let stripeCustomer;
     try {
       stripeCustomer = await StripeService.createCustomer({
         email,
-        firstName,
-        lastName,
+        displayName,
       });
     } catch (error) {
       console.error("Failed to create Stripe customer:", error);
@@ -71,8 +70,7 @@ class UserService {
       user = await db.User.create(
         {
           id: uuidv4(),
-          firstName,
-          lastName,
+          displayName,
           email,
           password: hashedPassword,
           role,
@@ -125,31 +123,6 @@ class UserService {
 
     // Step 3: Create trial subscription and save it
     try {
-      const trialPlanPriceId = process.env.STRIPE_TRIAL_PRICE_ID; // Ensure this is set in .env
-      const trialPeriodDays = 7;
-      const stripeSubscription = await StripeService.createTrialSubscription({
-        customerId: stripeCustomer.id,
-        priceId: trialPlanPriceId,
-        trialPeriodDays,
-      });
-
-      const subscriptionData = {
-        stripeSubscriptionId: stripeSubscription.id,
-        stripePriceId: stripeSubscription.items.data[0].price.id,
-        price: stripeSubscription.items.data[0].price.unit_amount_decimal / 100,
-        name: stripeSubscription.items.data[0].price.nickname || "Trial",
-        currency: stripeSubscription.items.data[0].price.currency,
-        interval: stripeSubscription.items.data[0].plan.interval,
-        expiryDate: new Date(stripeSubscription.current_period_end * 1000),
-        status: stripeSubscription.trial_end
-          ? "Trial"
-          : stripeSubscription.status, // Keep Trial status here
-        isDeleted: false,
-        userId: user.id,
-      };
-
-      await StripeSubscriptionService.create(subscriptionData);
-
       // Set reduced document limit for trial users
       await db.User.update({ documentLimit: 10 }, { where: { id: user.id } });
 
@@ -163,6 +136,8 @@ class UserService {
   static async createUserWithGoogle({
     firstName,
     lastName,
+    displayName,
+    profileImageUrl,
     email,
     googleId,
     role = "Super-Admin",
@@ -178,7 +153,7 @@ class UserService {
 
     const stripeCustomer = await StripeService.createCustomer({
       email,
-      firstName,
+      firstName: displayName,
       lastName,
     });
 
@@ -189,6 +164,8 @@ class UserService {
       id: uuidv4(),
       firstName,
       lastName,
+      displayName,
+      profileImageUrl,
       email,
       googleId,
       password: dummyPassword, // Set dummy password

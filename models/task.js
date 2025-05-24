@@ -33,8 +33,12 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM("sent", "opened", "signed", "failed"),
         defaultValue: "sent",
       },
+      lang: {
+        type: DataTypes.ENUM("en", "he"),
+        defaultValue: "en",
+      },
       channel: {
-        type: DataTypes.ENUM("email", "sms"),
+        type: DataTypes.ENUM("email", "phone"),
         allowNull: false,
       },
       additionalNote: {

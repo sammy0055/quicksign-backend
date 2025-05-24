@@ -19,8 +19,7 @@ class UserController {
       }
 
       const {
-        firstName,
-        lastName,
+        displayName,
         email,
         password,
         role = "Super-Admin",
@@ -34,6 +33,7 @@ class UserController {
         audience: process.env.GOOGLE_AUTH_CLIENT_ID,
       });
       const payload = ticket.getPayload();
+
       if (!ticket) throw new Error("authentication failed");
       if (existingUser) {
         // login user and respond
@@ -65,6 +65,8 @@ class UserController {
             firstName: user.firstName,
             lastName: user.lastName,
             fullName: user.firstName + " " + user.lastName,
+            displayName: payload.name,
+            profileImageUrl: payload.picture,
             stripeId: user.stripeId,
           },
           process.env.SECRET,
@@ -81,8 +83,7 @@ class UserController {
         });
       } else {
         const user = await UserService.createUserWithGoogle({
-          firstName,
-          lastName,
+          displayName,
           email,
           googleId: payload.sub,
           role,
@@ -116,8 +117,7 @@ class UserController {
     }
 
     const {
-      firstName,
-      lastName,
+      displayName,
       email,
       password,
       role = "Super-Admin",
@@ -148,8 +148,8 @@ class UserController {
         }
 
         user = await UserService.createUserWithGoogle({
-          firstName,
-          lastName,
+          displayName: payload?.name || displayName,
+          profileImageUrl: payload?.picture || "",
           email,
           googleId: payload.sub,
           role,
@@ -179,8 +179,7 @@ class UserController {
         }
 
         user = await UserService.createUser({
-          firstName,
-          lastName,
+          displayName,
           email,
           password,
           role,
@@ -204,7 +203,7 @@ class UserController {
         data,
       });
     } catch (error) {
-      return res.status(500).json({  message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   }
 
@@ -216,7 +215,7 @@ class UserController {
         data,
       });
     } catch (error) {
-      res.status(500).json({  message: error.message });
+      res.status(500).json({ message: error.message });
     }
   }
 
@@ -232,7 +231,7 @@ class UserController {
       const data = await db.User.destroy({ where: { id: companyUserId } });
       return res.status(201).json({ data, message: "remove successfully" });
     } catch (error) {
-      res.status(500).json({  message: error.message });
+      res.status(500).json({ message: error.message });
     }
   }
 
@@ -332,6 +331,8 @@ class UserController {
           firstName: user.firstName,
           lastName: user.lastName,
           fullName: user.firstName + " " + user.lastName,
+          displayName: user.displayName,
+          profileImageUrl: user.profileImageUrl,
           stripeId: user.stripeId,
         },
         process.env.SECRET,
@@ -403,7 +404,7 @@ class UserController {
       });
     } catch (error) {
       console.error("error", error);
-      return res.status(500).send({ message: error.message});
+      return res.status(500).send({ message: error.message });
     }
   }
 

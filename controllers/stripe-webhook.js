@@ -1,7 +1,5 @@
 const db = require("../models");
-const { StripeProductService } = require("../services/stripeProduct.service");
 const StripeSubscriptionService = require("../services/stripeSubscription.service");
-const SubscriptionService = require("../services/subscription.service");
 const UserService = require("../services/user.service");
 
 require("dotenv").config();
@@ -16,9 +14,7 @@ const stripeWebhook = (req, res) => {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.log("===========stripe error================");
-    console.log(err.message);
-    console.log("====================================");
+    console.error(err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -43,12 +39,6 @@ const stripeWebhook = (req, res) => {
    * i don't know the difference between subscription and stripeSubscription.
    */
 
-  const findSubscriptionInDB = async (subscriptionService, userId) => {
-    return await subscriptionService.findOne({
-      where: { userId: userId },
-    });
-  };
-
   const findStripeSubscriptionInDBbyUserId = async (userId) => {
     return await StripeSubscriptionService.findOne({
       where: { userId: userId },
@@ -57,10 +47,6 @@ const stripeWebhook = (req, res) => {
 
   const findUserInDBbyCustomerId = async (customerId) => {
     return await UserService.getUser({ stripeId: customerId });
-  };
-
-  const findStripeProductById = async (productId) => {
-    return await StripeProductService.findProduct(productId);
   };
 
   const updateDB = async (event) => {
@@ -74,12 +60,11 @@ const stripeWebhook = (req, res) => {
     );
 
     const { plan, current_period_end } = paymentIntent;
-    const product = await findStripeProductById(plan.product);
-
-    if (!product.send_credits)
-      throw new Error("send_credits is not defined in the plan object");
-    const documentLimit = product.send_credits;
-    await db.User.update({ documentLimit }, { where: { id: userData.id } });
+    const product = await stripe.products.retrieve(plan.product);
+    await db.User.update(
+      { isDocumentLimited: false },
+      { where: { id: userData.id } }
+    );
 
     const subscriptionData = {
       stripeSubscriptionId: subscriptionId,
@@ -99,25 +84,6 @@ const stripeWebhook = (req, res) => {
       });
     } else {
       await StripeSubscriptionService.create(subscriptionData);
-    }
-
-    // Step 6: Update the Subscription table (if needed)
-    const subscriptionService = new SubscriptionService(db.Subscription);
-    const subscriptionRecord = await findSubscriptionInDB(
-      subscriptionService,
-      userData.id
-    );
-
-    if (subscriptionRecord) {
-      await subscriptionService.update(
-        { stripePlanId: plan.id },
-        { where: { id: subscriptionRecord.id } }
-      );
-    } else {
-      await subscriptionService.create({
-        stripePlanId: plan.id,
-        userId: userData.id,
-      });
     }
   };
 

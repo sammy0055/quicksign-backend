@@ -71,14 +71,18 @@ class whatsAppUtil {
    * @param {string} signUrl - URL for signing the document
    * @returns {Promise} - Message sending result
    */
-  async sendDocumentSignRequest(recipient, document, signUrl) {
+  async sendDocumentSignRequest(recipient, document, signUrl, lang) {
     const name = recipient.name || "there";
     const note = document.note ? `\nNote: ${document.note}` : "";
 
-    const message = `Hello ${name},\n\nYou have been assigned a new document "${document.name}" to sign.${note}\n\nPlease click on the following link to view and sign the document: ${signUrl}`;
+    const message =
+      lang === "en"
+        ? `Hello ${name},\n\nYou have been assigned a new document "${document.name}" to sign.${note}\n\nPlease click on the following link to view and sign the document: ${signUrl}`
+        : `שלום ${name},\n\nהוקצה לך מסמך חדש "${document.name}" לחתימה.${note}\n\nנא ללחוץ על הקישור הבא כדי לצפות ולחתום על המסמך: ${signUrl}
+`;
 
     // return await this.sendTextMessage(recipient.phone, message);
-    return await sendWhatSappMessage(recipient.phone, message)
+    return await sendWhatSappMessage(recipient.phone, message);
   }
 
   /**

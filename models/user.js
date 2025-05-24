@@ -25,9 +25,9 @@ module.exports = (sequelize, DataTypes) => {
         onDelete: "CASCADE",
       });
       User.hasOne(models.StripeSubscription, { foreignKey: "userId" });
-      User.hasOne(models.Subscription, {
-        foreignKey: "userId",
-      });
+      // User.hasOne(models.Subscription, {
+      //   foreignKey: "userId",
+      // });
       User.hasMany(models.Billing, {
         foreignKey: "userId",
       });
@@ -102,8 +102,7 @@ module.exports = (sequelize, DataTypes) => {
        * role of the user
        */
       status: {
-        type: DataTypes.ENUM,
-        values: ["active", "inactive", "freezed"],
+        type: DataTypes.STRING,
         allowNull: false,
         defaultValue: "active",
       },
@@ -119,6 +118,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
         unique: true,
+      },
+      profileImageUrl: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: false,
       },
 
       documentLimit: {

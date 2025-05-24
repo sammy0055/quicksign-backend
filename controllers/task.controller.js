@@ -22,6 +22,12 @@ const {
 } = require("../helpers/manage-fileAndfolder");
 const { v4: uuidv4 } = require("uuid");
 
+function getClientName(client, lang = "en") {
+  const name = client?.name || client?.email || client?.phone;
+  const defaultName = lang === "he" ? "לקוח" : "a client";
+  return name || defaultName;
+}
+
 exports.getAllTasks = async (req, res) => {
   try {
     const { limit, offset, filters } = req.body;
@@ -108,10 +114,11 @@ exports.getAllSavedPdfInfo = async (req, res) => {
 
 exports.createTask = async (req, res) => {
   try {
+    const lang = req.query.lang;
     const data = JSON.parse(req.body.data);
-    const isClientListEmpty = data?.clientList.length === 0;
-    const isGroupListEmpty = data?.groupList.length === 0;
-    const isAdditionalListEmpty = data?.additionalContactList.length === 0;
+    const isClientListEmpty = data?.clientList?.length === 0;
+    const isGroupListEmpty = data?.groupList?.length === 0;
+    const isAdditionalListEmpty = data?.additionalContactList?.length === 0;
     // Validate client or group selection
 
     if (isClientListEmpty && isAdditionalListEmpty && isGroupListEmpty) {
@@ -134,7 +141,9 @@ exports.createTask = async (req, res) => {
       );
 
     const { path } = await addEditedPdfFile(req.file);
-
+    data.clientList.forEach((item) => {
+      if (!item.id) item.id = uuidv4();
+    });
     // Map data for task creation
     const mappedData = {
       documentName: data.documentName,
@@ -157,6 +166,7 @@ exports.createTask = async (req, res) => {
         : undefined,
       additionalContactList: data?.additionalContactList,
       companyId: user.companyId,
+      lang: lang,
     };
 
     const task = await taskService.createTask(mappedData);
@@ -164,10 +174,10 @@ exports.createTask = async (req, res) => {
     // Collect all clients
     let allClients = [];
     data.clientList.forEach((client) => allClients.push(client));
-    for (const group of data?.groupList) {
-      const groupClients = await groupService.getClientsFromGroup(group.id);
-      allClients.push(...groupClients);
-    }
+    // for (const group of data?.groupList) {
+    //   const groupClients = await groupService.getClientsFromGroup(group.id);
+    //   allClients.push(...groupClients);
+    // }
 
     // Deduplicate by client.id
     const uniqueClientsMap = {};
@@ -177,41 +187,41 @@ exports.createTask = async (req, res) => {
     const uniqueClients = Object.values(uniqueClientsMap);
 
     // add additional contacts if any --------------------------------
-    const additionalContactList = data?.additionalContactList;
-    const newArray = [];
-    if (additionalContactList.length) {
-      if (data.sendingChannel === "email") {
-        const emails = additionalContactList.filter((item) =>
-          /\S+@\S+\.\S+/.test(item)
-        );
-        for (const email of emails) {
-          if (uniqueClients?.length) {
-            uniqueClients.push({ email: email, id: uuidv4() });
-          } else {
-            newArray.push({ email: email, id: uuidv4() });
-          }
-        }
-        if (!uniqueClients?.length) {
-          uniqueClients.push(...newArray);
-        }
-      }
+    // const additionalContactList = data?.additionalContactList;
+    // const newArray = [];
+    // if (additionalContactList.length) {
+    //   if (data.sendingChannel === "email") {
+    //     const emails = additionalContactList.filter((item) =>
+    //       /\S+@\S+\.\S+/.test(item)
+    //     );
+    //     for (const email of emails) {
+    //       if (uniqueClients?.length) {
+    //         uniqueClients.push({ email: email, id: uuidv4() });
+    //       } else {
+    //         newArray.push({ email: email, id: uuidv4() });
+    //       }
+    //     }
+    //     if (!uniqueClients?.length) {
+    //       uniqueClients.push(...newArray);
+    //     }
+    //   }
 
-      if (data.sendingChannel === "sms") {
-        const phoneNumbers = additionalContactList.filter((item) =>
-          /^[+]?[\d]{7,15}$/.test(item)
-        );
-        for (const phone of phoneNumbers) {
-          if (uniqueClients?.length) {
-            uniqueClients.push({ phone: phone, id: uuidv4() });
-          } else {
-            newArray.push({ phone: phone, id: uuidv4() });
-          }
-        }
-        if (uniqueClients?.length === 0) {
-          uniqueClients.push(...newArray);
-        }
-      }
-    }
+    //   if (data.sendingChannel === "sms") {
+    //     const phoneNumbers = additionalContactList.filter((item) =>
+    //       /^[+]?[\d]{7,15}$/.test(item)
+    //     );
+    //     for (const phone of phoneNumbers) {
+    //       if (uniqueClients?.length) {
+    //         uniqueClients.push({ phone: phone, id: uuidv4() });
+    //       } else {
+    //         newArray.push({ phone: phone, id: uuidv4() });
+    //       }
+    //     }
+    //     if (uniqueClients?.length === 0) {
+    //       uniqueClients.push(...newArray);
+    //     }
+    //   }
+    // }
 
     // Send notifications based on channel --------------------------
     if (data.sendingChannel === "email") {
@@ -229,21 +239,27 @@ exports.createTask = async (req, res) => {
             additionalNote: data.additionalNote,
             url,
           };
+          const notificationMessage = {
+            en: `Document sent to ${
+              client.name || client.email.split("@")[0]
+            } via email`,
+            he: `המסמך נשלח אל ${client.name || client.phone} דרך email`,
+          };
+
+          const taskMsgTitle =
+            lang === "en"
+              ? `New Task Assigned: ${task.documentName}`
+              : `משימה חדשה הוקצתה: ${task.documentName}`;
           const htmlContent = await renderTemplate(
             "task-email.html",
             templateData
           );
-          await sendMail(
-            client.email,
-            `New Task Assigned: ${task.documentName}`,
-            htmlContent
-          );
+          await sendMail(client.email, taskMsgTitle, htmlContent);
           await notificationService.createNotification({
             userId: req.userId,
             type: "documentSent",
-            message: `Document sent to ${
-              client.name || client.email.split("@")[0]
-            } via email`,
+            message:
+              lang === "en" ? notificationMessage.en : notificationMessage.he,
             taskId: task.id,
             clientName: client.name || client.email.split("@")[0],
           });
@@ -251,7 +267,8 @@ exports.createTask = async (req, res) => {
       }
     }
 
-    if (data.sendingChannel === "sms") {
+    // phone represent whatsapp channel 😁
+    if (data.sendingChannel === "phone") {
       for (const client of uniqueClients) {
         if (client.phone) {
           const token = generateTaskToken({
@@ -270,12 +287,19 @@ exports.createTask = async (req, res) => {
           await whatsappUtilInstance.sendDocumentSignRequest(
             recipient,
             document,
-            signUrl
+            signUrl,
+            lang
           );
+
+          const notificationMessage = {
+            en: `Document sent to ${client.name || client.phone} via whatsapp`,
+            he: `המסמך נשלח אל ${client.name || client.phone} דרך whatsapp`,
+          };
           await notificationService.createNotification({
             userId: req.userId,
             type: "documentSent",
-            message: `Document sent to ${client.name || client.phone} via SMS`,
+            message:
+              lang === "en" ? notificationMessage.en : notificationMessage.he,
             taskId: task.id,
             clientName: client.name || client.phone,
           });
@@ -363,15 +387,22 @@ exports.openTask = async (req, res) => {
 
       // Fetch client details for the notification
       const client = await Client.findByPk(clientId);
-      const clientName = client
-        ? client.name || client.email || client.phone
-        : "a client";
+      const clientName = getClientName(client, task?.lang);
 
       // Create notification for the task creator
       await notificationService.createNotification({
         userId: task.userId, // Assumes task has userId (the creator)
         type: "taskOpened",
-        message: `Task "${task.documentName}" has been opened by ${clientName}`,
+        message:
+          task?.lang === "he"
+            ? `המשימה "${task.documentName}" נפתחה על ידי ${getClientName(
+                client,
+                task?.lang
+              )}`
+            : `Task "${task.documentName}" has been opened by ${getClientName(
+                client,
+                task?.lang
+              )}`,
         taskId: task.id,
         clientName: clientName,
       });
@@ -431,6 +462,7 @@ exports.submitTask = async (req, res) => {
     // Optionally, update overall task status if necessary (for instance, check if all assigned clients have submitted)
 
     // Retrieve the task for notification details
+    await taskService.updateTask(taskId, { status: "signed" });
     const updatedTask = await taskService.getTaskById(taskId);
     if (!updatedTask) {
       return res
@@ -440,13 +472,23 @@ exports.submitTask = async (req, res) => {
 
     // Retrieve client information using clientId to get the client's name
     const client = await Client.findByPk(clientId);
-    const clientName = client && client.name ? client.name : clientEmail;
+    const clientName = getClientName(client);
 
     // Create a notification for the admin/manager who sent the task
     await notificationService.createNotification({
       userId: updatedTask.userId, // Admin/manager's user ID from the task record
       type: "Task Submission",
-      message: `Client (${clientName}) has submitted a signed document for "${updatedTask.documentName}".`,
+      message:
+        task.lang === "he"
+          ? `הלקוח (${getClientName(client, task?.lang)}) שלח מסמך חתום עבור "${
+              updatedTask.documentName
+            }"`
+          : `Client (${getClientName(
+              client,
+              task?.lang
+            )}) has submitted a signed document for "${
+              updatedTask.documentName
+            }".`,
       taskId: updatedTask.id,
       clientName: clientName,
     });
