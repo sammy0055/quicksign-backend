@@ -1,4 +1,4 @@
-FROM node:18.17-bullseye-slim
+FROM node:20.19.2-bullseye-slim
 WORKDIR /app
 
 # Install system dependencies for native modules like canvas
@@ -7,19 +7,13 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
     libcairo2-dev \
-    libpango1.0-dev \
-    libjpeg-dev \
-    libgif-dev \
-    librsvg2-dev 
+    libpango1.0-dev
 
 # Ensure host node_modules won't be copied
 COPY package*.json ./
 
 # Install everything inside Docker
 RUN yarn install 
-
-# Rebuild canvas from source inside Docker to avoid ELF mismatch
-# RUN npm rebuild canvas --build-from-source
 EXPOSE 8080
 # Copy rest of app AFTER installing modules
 COPY . .

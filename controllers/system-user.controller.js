@@ -1,7 +1,5 @@
 const { SystemUserService } = require("../services/system-user.service");
 const UserService = require("../services/user.service");
-const { generatePreview } = require("../helpers/pdfTemplateUpload");
-const { pdfTemplate } = require("../models");
 const PdfTemplateService = require("../services/pdfTemplate.service");
 
 class SystemUserController {
@@ -98,14 +96,8 @@ class SystemUserController {
 
   static async pdfTemplateUpload(req, res) {
     try {
-      const thumbnailFileName = await generatePreview(
-        req.fileMetadata.newFileName
-      );
-      const data = await pdfTemplate.create({
-        ...req.fileMetadata,
-        thumbnailFileName,
-      });
-      res.status(200).json({ data });
+    
+      res.status(200).json({ data:[] });
     } catch (error) {
       res.status(500).json({ error: { message: error.message } });
     }

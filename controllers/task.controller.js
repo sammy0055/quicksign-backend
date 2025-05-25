@@ -8,7 +8,6 @@ require("dotenv").config();
 const path = require("path");
 var fs = require("fs");
 const fsp = require("fs").promises;
-const { generatePdfThumbnail } = require("../utils/pdfThumbnail");
 const { Client, Task } = require("../models");
 require("structured-clone-polyfill");
 const submissionService = require("../services/submission.service");
