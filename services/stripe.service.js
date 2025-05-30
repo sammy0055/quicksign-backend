@@ -5,7 +5,7 @@ const { StripeProductService } = require("./stripeProduct.service");
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
-const WEB_BASE_URL = process.env.ANGULARURL || "";
+const WEB_BASE_URL = `${process.env.ANGULARURL}/dashboard` || "";
 
 class StripeService {
   static async createCustomer(user) {
@@ -111,8 +111,6 @@ class StripeService {
 
     throw new Error("Subscription creation not implemented yet");
   }
-
-
 
   static async getSubscriptions(stripeId) {
     return await stripe.customers.subscriptions.list({

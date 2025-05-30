@@ -173,10 +173,6 @@ exports.createTask = async (req, res) => {
     // Collect all clients
     let allClients = [];
     data.clientList.forEach((client) => allClients.push(client));
-    // for (const group of data?.groupList) {
-    //   const groupClients = await groupService.getClientsFromGroup(group.id);
-    //   allClients.push(...groupClients);
-    // }
 
     // Deduplicate by client.id
     const uniqueClientsMap = {};
@@ -184,43 +180,6 @@ exports.createTask = async (req, res) => {
       if (client.id) uniqueClientsMap[client.id] = client;
     });
     const uniqueClients = Object.values(uniqueClientsMap);
-
-    // add additional contacts if any --------------------------------
-    // const additionalContactList = data?.additionalContactList;
-    // const newArray = [];
-    // if (additionalContactList.length) {
-    //   if (data.sendingChannel === "email") {
-    //     const emails = additionalContactList.filter((item) =>
-    //       /\S+@\S+\.\S+/.test(item)
-    //     );
-    //     for (const email of emails) {
-    //       if (uniqueClients?.length) {
-    //         uniqueClients.push({ email: email, id: uuidv4() });
-    //       } else {
-    //         newArray.push({ email: email, id: uuidv4() });
-    //       }
-    //     }
-    //     if (!uniqueClients?.length) {
-    //       uniqueClients.push(...newArray);
-    //     }
-    //   }
-
-    //   if (data.sendingChannel === "sms") {
-    //     const phoneNumbers = additionalContactList.filter((item) =>
-    //       /^[+]?[\d]{7,15}$/.test(item)
-    //     );
-    //     for (const phone of phoneNumbers) {
-    //       if (uniqueClients?.length) {
-    //         uniqueClients.push({ phone: phone, id: uuidv4() });
-    //       } else {
-    //         newArray.push({ phone: phone, id: uuidv4() });
-    //       }
-    //     }
-    //     if (uniqueClients?.length === 0) {
-    //       uniqueClients.push(...newArray);
-    //     }
-    //   }
-    // }
 
     // Send notifications based on channel --------------------------
     if (data.sendingChannel === "email") {
@@ -277,7 +236,7 @@ exports.createTask = async (req, res) => {
           const signUrl = `${process.env.ANGULARURL}/document-sign?token=${token}`;
           const recipient = {
             phone: client.phone,
-            name: client.name || "there",
+            name: client?.name || "there",
           };
           const document = {
             name: data.documentName,
@@ -304,6 +263,13 @@ exports.createTask = async (req, res) => {
           });
         }
       }
+    }
+
+    if (data.sendingChannel === "browser") {
+      return res.status(500).json({
+        error:
+          "Browser channel is not supported yet. Please use email or phone.",
+      });
     }
 
     res
