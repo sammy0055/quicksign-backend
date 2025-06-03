@@ -52,7 +52,7 @@ exports.getAllTasks = async (limit, offset, filters, userId) => {
       { model: Group, through: { attributes: [] } },
       {
         model: User,
-        attributes: ["id", "firstName", "lastName", "email"],
+        attributes: ["id", "displayName", "lastName", "email"],
       },
     ],
   });
@@ -82,9 +82,6 @@ exports.getTaskById = async (id) => {
  */
 exports.createTask = async (data) => {
   // Create the task record
-  console.log("====================================");
-  console.log("data", data);
-  console.log("====================================");
   const task = await Task.create(data);
 
   // If associated client IDs are provided, set the associations

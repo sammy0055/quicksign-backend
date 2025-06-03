@@ -37,6 +37,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM("en", "he"),
         defaultValue: "en",
       },
+      clientList: {
+        type: DataTypes.JSON,
+        defaultValue: [],
+        allowNull: false,
+      },
       channel: {
         type: DataTypes.ENUM("email", "phone"),
         allowNull: false,

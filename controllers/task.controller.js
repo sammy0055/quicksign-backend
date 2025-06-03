@@ -154,6 +154,7 @@ exports.createTask = async (req, res) => {
       clientIds: Array.isArray(data?.clientList)
         ? data.clientList.map((c) => c.id)
         : [],
+      clientList: data?.clientList || [],
       groupIds: Array.isArray(data?.groupList)
         ? data.groupList.map((g) => g.id)
         : [],
@@ -427,8 +428,21 @@ exports.submitTask = async (req, res) => {
     // Optionally, update overall task status if necessary (for instance, check if all assigned clients have submitted)
 
     // Retrieve the task for notification details
-    await taskService.updateTask(taskId, { status: "signed" });
     const updatedTask = await taskService.getTaskById(taskId);
+    const taskSubmissions = await submissionService.getAllSubmissionsByTask(
+      taskId
+    );
+
+    const hasAllclientsSubmitted = updatedTask?.clientList?.every((client) => {
+      return taskSubmissions?.some((submission) => {
+        return submission?.clientId === client?.id;
+      });
+    });
+
+    if (hasAllclientsSubmitted) {
+      await taskService.updateTask(taskId, { status: "signed" });
+    }
+
     if (!updatedTask) {
       return res
         .status(404)

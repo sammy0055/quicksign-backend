@@ -6,6 +6,12 @@ exports.getSubmissionByTaskAndClient = async (taskId, clientId) => {
   });
 };
 
+exports.getAllSubmissionsByTask = async (taskId) => {
+  return await Submission.findAll({
+    where: { taskId },
+  });
+};
+
 exports.createSubmission = async (data) => {
   // data should include: taskId, clientId, fileUrl, submittedAt (optional)
   return await Submission.create(data);
